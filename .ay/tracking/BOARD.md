@@ -2,7 +2,7 @@
 
 | # | Title | Agent | Status | Blocked By |
 |---|-------|-------|--------|------------|
-| 1 | wave0-audit-pumpmolt | foundation (report only; human reviews) | READY | — (Gate: human sign-off on report) |
+| 1 | wave0-audit-pumpmolt | foundation (report only; human reviews) | DONE (2026-06-10) | — (SAFE-WITH-CHANGES, ADR-006) |
 | 2 | wave1-core | foundation | DONE (2026-06-10) | — (contracts frozen, ADR-001) |
 | 3 | wave1-db | foundation | DONE (2026-06-10) | — (Supabase live, ADR-004) |
 | 4 | wave2-ingestion | ingestion (A) | READY | — (Gate 1: PumpPortal WS) |
@@ -10,7 +10,7 @@
 | 6 | wave2-enrichment | enrichment (C) | READY | — (Gate 1: data provider sign-off) |
 | 7 | wave2-decision | decision (D) | READY | — (Gate 1: Anthropic API) |
 | 8 | wave2-risk | risk (E) | READY | — |
-| 9 | wave2-execution | execution (F) | BACKLOG | wave0-audit-pumpmolt (Gate 1: pumpmolt) |
+| 9 | wave2-execution | execution (F) | READY | — (Gate 1: pumpmolt integration plan; audit conditions in task file) |
 | 10 | wave2-positions | positions (G) | READY | — |
 | 11 | wave3-orchestrator | integration | BACKLOG | all Wave 2 tasks |
 | 12 | wave3-api | integration | BACKLOG | wave3-orchestrator |

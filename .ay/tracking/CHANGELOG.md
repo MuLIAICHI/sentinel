@@ -12,6 +12,9 @@
   daily_stats, kill_state) live on Supabase (ADR-004), idempotent migration applier,
   typed query helpers, bus-driven event persistence with pure routing (ADR-005).
   21 tests (14 pure, 7 live-DB).
+- pumpmolt security audit (task wave0-audit-pumpmolt): docs/audits/pumpmolt-audit.md,
+  verdict SAFE-WITH-CHANGES (ADR-006) — vendor trade path with keypair injection,
+  verify-before-sign, pin to commit 7119de43.
 
 ### Changed
 ### Fixed

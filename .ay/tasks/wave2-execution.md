@@ -28,7 +28,15 @@ If all dependencies are DONE, this task is READY.
 2. `paper.ts`: fill at current stream price (ingestion ring buffer read API) minus a
    modeled haircut — PumpPortal 0.5% + priority fee + realistic slippage. Mark open
    positions to market off the trade stream. Document the model in comments.
-3. `live.ts`: thin wrapper over pumpmolt `buyTokens`/`sellTokens`.
+3. `live.ts`: **vendored pumpmolt trade path, NOT an npm dependency** — per the
+   signed-off audit (docs/audits/pumpmolt-audit.md, ADR-006, commit `7119de43`):
+   - Re-implement `fetchLocalTransaction` + trade execution (~200 LOC) with
+     **keypair injection**: functions take the `Keypair` from `signer.ts`; never
+     read the key env var here (signer isolation).
+   - **Inspect before signing:** verify fee payer is our pubkey and program ids
+     are expected; reject otherwise (blind-signing mitigation).
+   - Always set `SOLANA_RPC_URL` explicitly; never their public-mainnet default.
+   - Do not port `launchToken`/`burnTokens`/CLI/Docker; record provenance header.
    **Top of EVERY exported function:**
    `if (!LIVE_TRADING || killSwitchActive()) throw/refuse` — unreachable unless both
    human gates are open. `LIVE_TRADING` imported read-only from `risk/guards.ts`.

@@ -69,3 +69,15 @@ Per-agent notes:
   Passwords with + $ / , must be percent-encoded in the URI.
 Open: RLS hardening SQL pending human decision (see diff-from-plan #5).
 ---
+
+---
+[2026-06-10 20:10] foundation > execution
+Subject: pumpmolt audit DONE (SAFE-WITH-CHANGES, ADR-006) — your task is READY with conditions
+Detail: Read docs/audits/pumpmolt-audit.md before planning. Binding conditions
+(already merged into .ay/tasks/wave2-execution.md): VENDOR the ~200-LOC trade path
+at commit 7119de43 with keypair injection — do not npm-install pumpmolt (it reads
+the key env var internally; that breaks signer isolation). Verify fee payer +
+program ids before signing (it blind-signs PumpPortal responses). §6 of the report
+has the API shapes worth keeping (PumpPortal request fields, OperationResult).
+Your Gate 1 (integration plan sign-off) still applies before writing live.ts.
+---

@@ -58,3 +58,18 @@ Rationale: Keeps the frozen contract intact and the audit row complete.
 Alternatives: Add snapshot to the Decision event (contract change, rejected);
   nullable snapshot column (loses the audit guarantee).
 Date: 2026-06-10
+
+[ADR-006] pumpmolt audit verdict: SAFE-WITH-CHANGES — vendor, don't install
+Context: wave0-audit-pumpmolt audited github.com/PlaydaDev/pumpmolt at commit
+  7119de43 (full report: docs/audits/pumpmolt-audit.md). Key handling verified
+  local (no key egress); but the library reads SOLANA_PRIVATE_KEY inside its own
+  code, and it blind-signs PumpPortal-built transactions.
+Decision: Human approved SAFE-WITH-CHANGES. wave2-execution vendors the ~200-LOC
+  trade path with keypair injection (signer isolation preserved), adds
+  fee-payer/program-id verification before signing, pins provenance to 7119de43,
+  always sets SOLANA_RPC_URL, and ports none of launch/burn/CLI/Docker.
+Rationale: npm-installing it would create a second key-reader (hard-rule violation)
+  and import unused attack surface.
+Alternatives: npm dependency (rejected, isolation); writing the PumpPortal client
+  from scratch (vendoring audited code is less new surface).
+Date: 2026-06-10
