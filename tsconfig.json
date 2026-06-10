@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["core/**/*.ts", "db/**/*.ts", "tests/**/*.ts"]
+  "include": ["core/**/*.ts", "db/**/*.ts", "filter/**/*.ts", "risk/**/*.ts", "positions/**/*.ts", "tests/**/*.ts"]
 }

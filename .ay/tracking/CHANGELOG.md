@@ -15,6 +15,14 @@
 - pumpmolt security audit (task wave0-audit-pumpmolt): docs/audits/pumpmolt-audit.md,
   verdict SAFE-WITH-CHANGES (ADR-006) — vendor trade path with keypair injection,
   verify-before-sign, pin to commit 7119de43.
+- `filter/` (task wave2-filter): six pure deterministic rules, all-failures-collected
+  evaluate(), skip-on-missing-context. 26 tests.
+- `risk/` (task wave2-risk): hardcoded guards (LIVE_TRADING=false + tripwire test),
+  pure approve() gate (confidence can only shrink size), DB-backed kill switch.
+  SOL=$150 sizing assumption flagged for review. 28 tests.
+- `positions/` (task wave2-positions): mechanical exit engine — TP 50% @ +80%,
+  25% trail from peak, −35% hard stop, 45-min time stop, latched kill flatten;
+  injected SellExecutor contract. 22 tests.
 
 ### Changed
 ### Fixed

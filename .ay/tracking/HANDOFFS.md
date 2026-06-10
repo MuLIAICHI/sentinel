@@ -81,3 +81,49 @@ program ids before signing (it blind-signs PumpPortal responses). §6 of the rep
 has the API shapes worth keeping (PumpPortal request fields, OperationResult).
 Your Gate 1 (integration plan sign-off) still applies before writing live.ts.
 ---
+
+---
+[2026-06-10 21:15] filter > all
+Subject: wave2-filter DONE — evaluate(candidate, context, thresholds?) → FilterResult
+Detail: Six pure rules from 'filter/index.js'; ALL failure ids collected in
+RULE_IDS order. FilterContext fields are optional: rules with missing context
+SKIP (neither pass nor fail) — evaluate() works pre-enrichment (only age rule
+runs) and post-enrichment (all six). Orchestrator: run it twice for the SPEC
+funnel (cheap pass with empty context, full pass after enrichment by mapping
+EnrichedCandidate fields into FilterContext). dev_repeat_rugger only fires if
+you inject knownBadCreators (build the set from db/enrichment — filter never
+reads the DB). Boundaries: age == min passes; curve [55,85] inclusive;
+top10/devSold fail strictly above threshold. 26 tests incl. >95% batch rejection.
+---
+
+---
+[2026-06-10 21:15] risk > all
+Subject: wave2-risk DONE — approve() is the only entry ticket; kill switch live
+Detail: From 'risk/index.js': approve(decision, portfolio) → RiskedOrder
+({approved:true, mint, sizeSol, confidence}) | RiskBlock ({approved:false, mint,
+reason}) — pure, state injected via PortfolioState {openPositionsCount,
+dailyRealizedPnlSol, killSwitchActive}. Caller emits risk_block itself.
+sizeSol = MAX_POSITION_SOL × clamp(confidence,0,1), double-capped. Kill switch:
+isKillActive/activateKill/releaseKill (DB-backed, emits kill_switch on bus; DB
+write precedes emit). checkDailyLossKill(pnl) → caller activates 'daily_loss'.
+Day-rollover release is the ORCHESTRATOR's job. Constants assume SOL=$150 —
+flagged for human review pre-live. WALLET_HARD_CAP_SOL is exported but enforced
+at execution/wallet level, not in approve() (no balance in PortfolioState).
+LIVE_TRADING=false has a tripwire test. 28 tests.
+---
+
+---
+[2026-06-10 21:15] positions > all
+Subject: wave2-positions DONE — mechanical exit engine, SellExecutor contract for execution
+Detail: From 'positions/index.js': PositionEngine({executor, bus?, config?, now?}),
+engine.onTick(mint, price, nowMs?), auto-opens from position_opened bus events
+(or direct open()). Precedence per tick: kill_switch > hard_stop > time_stop >
+trailing_stop > take_profit; one action per position per tick. Trailing arms when
+peak > entry (so a flat position hits the −35% hard stop, not a −25% trail).
+Kill-switch latches: positions opened/ticked while latched are flattened.
+Re-entrancy safe (per-position pending flag). P&L = Σ(soldTokens×exitPrice) −
+entrySol, accumulated across partials. EXECUTION AGENT: you must implement
+SellExecutor = (position, fraction, reason) => Promise<{exitPrice}> where
+exitPrice is NET of fees/slippage — the engine adds no fee terms. Engine never
+writes DB; persistence rides position_updated/position_closed events. 22 tests.
+---
