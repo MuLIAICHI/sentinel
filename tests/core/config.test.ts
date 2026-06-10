@@ -31,13 +31,13 @@ describe('requireEnv', () => {
 
 describe('optionalEnv', () => {
   it('returns undefined when unset, without throwing', () => {
-    vi.stubEnv('INDEXER_API_KEY', '');
-    expect(optionalEnv('INDEXER_API_KEY')).toBeUndefined();
+    vi.stubEnv('MORALIS_API_KEY', '');
+    expect(optionalEnv('MORALIS_API_KEY')).toBeUndefined();
   });
 
   it('returns the value when set', () => {
-    vi.stubEnv('INDEXER_API_KEY', 'abc123');
-    expect(optionalEnv('INDEXER_API_KEY')).toBe('abc123');
+    vi.stubEnv('MORALIS_API_KEY', 'abc123');
+    expect(optionalEnv('MORALIS_API_KEY')).toBe('abc123');
   });
 });
 

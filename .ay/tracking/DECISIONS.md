@@ -73,3 +73,40 @@ Rationale: npm-installing it would create a second key-reader (hard-rule violati
 Alternatives: npm dependency (rejected, isolation); writing the PumpPortal client
   from scratch (vendoring audited code is less new surface).
 Date: 2026-06-10
+
+[ADR-007] PumpPortal websocket plan (Gate 1, ingestion — human approved)
+Context: Live-verified 2026-06-10: wss://pumpportal.fun/api/data; subscribeNewToken
+  is free/keyless; subscribeTokenTrade/subscribeAccountTrade REQUIRE an API key
+  whose wallet holds ≥0.02 SOL, metered 0.01 SOL per 10k messages. One websocket
+  connection only (multi-connection → hourly bans). Subscriptions are
+  per-connection (re-subscribe after reconnect). No timestamp on the wire.
+Decision: One connection; newToken stream always on; tokenTrade subscribed only
+  for filter survivors + open positions (keeps metered volume tiny). Timestamps
+  assigned at receipt. Bonding-curve % computed from vSol/vTokens reserves.
+  Human accepted the ~0.05 SOL data-feed funding; PUMPPORTAL_API_KEY +
+  PUMPPORTAL_WS_URL human-supplied via shell env.
+Date: 2026-06-10
+
+[ADR-008] Enrichment data provider: Helius free tier primary (Gate 1 — human approved)
+Context: Researched free tiers 2026-06-10. Birdeye eliminated (holder endpoint is
+  $199/mo Premium; 30k CU/month too small). Helius free (1M credits/mo) verifiably
+  covers holders via paginated getTokenAccounts (10 cr/page), dev history via
+  1-credit raw RPC scans, volume likewise; avoid their 100-credit Enhanced API.
+  Moralis (40k CU/day) has better-shaped endpoints but unpublished CU costs.
+Decision: Helius primary (HELIUS_API_KEY), doubling as SOLANA_RPC_URL. Enrichment
+  built behind a provider interface; optional Moralis adapter behind the same
+  interface, promoted only after real CU costs are measured. devPriorLaunches/Rugs
+  built from our own raw_tokens history + Helius backfill.
+Date: 2026-06-10
+
+[ADR-009] Decision brain: claude-haiku-4-5 + structured outputs + 100/hr ceiling
+  (Gate 1 — human approved)
+Context: Current Haiku-class id confirmed via claude-api reference:
+  claude-haiku-4-5 ($1/M in, $5/M out). Structured outputs
+  (output_config.format json_schema) constrain the response to the frozen
+  Decision shape, beating parse-and-pray.
+Decision: claude-haiku-4-5, structured outputs matching Decision, defensive
+  parse as last line (any failure → SKIP), hard ceiling 100 calls/hour
+  (auto-SKIP 'call_ceiling'), worst case ≈ $2–4/day. ANTHROPIC_API_KEY
+  human-supplied later.
+Date: 2026-06-10

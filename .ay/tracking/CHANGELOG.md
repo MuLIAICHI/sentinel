@@ -23,6 +23,16 @@
 - `positions/` (task wave2-positions): mechanical exit engine — TP 50% @ +80%,
   25% trail from peak, −35% hard stop, 45-min time stop, latched kill flatten;
   injected SellExecutor contract. 22 tests.
+- `ingestion/` (task wave2-ingestion): single-socket PumpPortal client (ADR-007),
+  reconnect + re-subscribe, trade ring buffer read API; live smoke PASS. 42 tests.
+- `enrichment/` (task wave2-enrichment): Helius free-tier provider behind a
+  DataProvider seam (ADR-008), holder/dev heuristics, 6h meta tags. 29 tests.
+- `decision/` (task wave2-decision): claude-haiku-4-5 with structured outputs and
+  100/hr ceiling (ADR-009); decide() never throws, all failures → SKIP. 35 tests.
+- `execution/` (task wave2-execution): paper fill engine implementing positions'
+  SellExecutor; vendored pumpmolt trade path @7119de43 with keypair injection and
+  verify-before-sign (ADR-006); live path double-gated and unreachable. 37 tests.
+  WAVE 2 COMPLETE — 250 tests repo-wide.
 
 ### Changed
 ### Fixed

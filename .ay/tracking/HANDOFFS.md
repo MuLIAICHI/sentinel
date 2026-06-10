@@ -127,3 +127,59 @@ SellExecutor = (position, fraction, reason) => Promise<{exitPrice}> where
 exitPrice is NET of fees/slippage — the engine adds no fee terms. Engine never
 writes DB; persistence rides position_updated/position_closed events. 22 tests.
 ---
+
+---
+[2026-06-10 23:30] ingestion > all
+Subject: wave2-ingestion DONE — single-socket PumpPortal client + trade ring buffer
+Detail: start(bus) once at boot (requireEnv PUMPPORTAL_WS_URL, optionalEnv
+PUMPPORTAL_API_KEY — keyless = newToken only, subscribeTrades no-ops with warning).
+Emits raw_token. Read API: tradeBuffer.latestPrice(mint), recentTicks(mint, sinceMs),
+volumeStats(mint, windowMs) → {buyCount, sellCount, solVolume, accelerating},
+evictStale() → dropped mints (orchestrator should unsubscribe those).
+subscribeTrades/unsubscribeTrades additive, reconnect-safe (auto re-subscribe).
+bondingCurveProgressPct(vSol) exported: clamp(((vSol−30)/85)×100) — documented
+estimate. No wire timestamps: receivedAt assigned locally. Eviction: 256 ticks/mint,
+15-min stale drop. Live smoke PASS (15/16 frames normalized).
+---
+
+---
+[2026-06-10 23:30] enrichment > all
+Subject: wave2-enrichment DONE — Helius provider behind DataProvider seam
+Detail: enrich(candidate, deps) → EnrichedCandidate | null (never throws; emits
+candidate_enriched). REQUIRED injections: provider (createHeliusProvider()),
+volumeAccelerating(mint) and bondingCurvePct(mint) — both from ingestion's read
+API; orchestrator wires them. devSoldPct = peak-vs-latest balance over last 50
+creator signatures (monotone heuristic). top10HolderPct EXCLUDES the largest
+owner (bonding-curve reserve) — else every pre-grad token trips the 25% filter.
+uniqueHolders caps at 5000 sentinel. holderGrowthPerMin = 0 in v1 (two-sample fn
+exists); devPriorRugs = 0 (= unknown). Budget ~26–66 Helius credits/token →
+~650 enrichments/day on free tier. Moralis adapter: implement DataProvider
+semantics exactly, MORALIS_API_KEY already registered.
+---
+
+---
+[2026-06-10 23:30] decision > all
+Subject: wave2-decision DONE — claude-haiku-4-5, structured outputs, 100/hr ceiling
+Detail: decide(enrichedCandidate) → Promise<Decision> — NEVER throws/rejects; call
+it only for filter survivors. Internally: emits {type:'decision'} AND persists via
+insertDecision(decision, snapshot) (ADR-005) — do not re-persist. SKIP fallbacks:
+'call_ceiling' (no API call, budget consumed before calls so errors can't bypass),
+'api_error', 'parse_failure' (incl. refusal/truncation). Cost logged per call as
+estCostUsd/cumCostUsd (~$0.0008/call; ceiling-saturated ≈ $1.9/day). Live smoke:
+run tests/decision/integration.test.ts once ANTHROPIC_API_KEY is set.
+---
+
+---
+[2026-06-10 23:30] execution > all
+Subject: wave2-execution DONE — paper engine live; live path double-gated + vendored
+Detail: createExecutor({priceOf: (mint)=>tradeBuffer.latestPrice(mint), bus}) →
+{buy(riskedOrder, symbol?), sell: SellExecutor}. Hand executor.sell straight to
+PositionEngine. buy emits position_opened; pass candidate symbol or positions get
+a placeholder. Haircut: 0.5% fee + 0.0005 SOL priority + 1.5% adverse slippage,
+both directions; sell exitPrice is NET (positions contract). Refuses cleanly when
+priceOf returns undefined (engine retries next tick). Key isolation grep-verified:
+SOLANA_PRIVATE_KEY only in signer.ts (lazy read — paper mode needs no key).
+GO-LIVE WOULD REQUIRE (flagged): human edits LIVE_TRADING + kill off + explicit
+mode:'live' + keys populated + reconcile-real-fills gap closed + pump.fun program
+id explorer-checked + WALLET_HARD_CAP balance enforcement added.
+---

@@ -10,11 +10,14 @@
 
 /** Every env var the system may use. Asking for anything else is a contract violation. */
 export type KnownEnvVar =
-  | 'PUMPPORTAL_WS_URL'   // ingestion (Agent A)
-  | 'SOLANA_RPC_URL'      // enrichment (Agent C)
-  | 'INDEXER_API_KEY'     // enrichment (Agent C) — final name set by chosen provider
-  | 'ANTHROPIC_API_KEY'   // decision (Agent D)
-  | 'DATABASE_URL';       // db layer
+  | 'PUMPPORTAL_WS_URL'    // ingestion (Agent A) — wss://pumpportal.fun/api/data
+  | 'PUMPPORTAL_API_KEY'   // ingestion (Agent A) — required for trade streams (ADR-007)
+  | 'SOLANA_RPC_URL'       // enrichment + execution — keyed Helius RPC endpoint (ADR-008)
+  | 'HELIUS_API_KEY'       // enrichment (Agent C) — primary data provider (ADR-008)
+  | 'MORALIS_API_KEY'      // enrichment (Agent C) — optional secondary provider (ADR-008)
+  | 'ANTHROPIC_API_KEY'    // decision (Agent D)
+  | 'SOLANA_PRIVATE_KEY'   // execution/signer.ts ONLY — never read anywhere else, live mode only
+  | 'DATABASE_URL';        // db layer
 
 /** Thresholds for the deterministic filter rules (SPEC §4, filter/ section). */
 export interface FilterThresholds {
