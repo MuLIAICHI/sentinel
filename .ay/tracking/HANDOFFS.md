@@ -46,3 +46,26 @@ source. tsconfig include currently lists core/ and tests/ — ADD YOUR MODULE DI
 says 22 (ADR-003) — avoid Node-22-only APIs.
 Unblocked: wave1-db (foundation continues there).
 ---
+
+---
+[2026-06-10 19:30] foundation > all
+Subject: wave1-db DONE — Wave 1 complete, all of Wave 2 except execution is READY
+Detail: The DB layer is live against Supabase project "sentinel-bot" (ADR-004).
+What you code against (import from 'db/queries.js' / 'db/persist.js'):
+- queries: insertRawToken, insertDecision(d, snapshot), upsertPosition,
+  getOpenPositions, getClosedPositions, getDecisions, getDailyStats, bumpDailyStat,
+  addRealizedPnl, getKillState/setKillState, getCreatorHistory, utcDay.
+- persist: attachPersistence(bus) is called ONCE by the orchestrator at boot —
+  leaf modules just emit events; rows happen.
+- migrations: npm run db:migrate (idempotent); add NNN_name.sql under db/migrations/.
+Per-agent notes:
+- decision (D): you MUST call insertDecision(decision, enrichedSnapshot) yourself —
+  the bus only counts buys/skips; your row carries the audit snapshot (ADR-005).
+- risk (E): kill switch state = getKillState/setKillState (single DB row, CHECK id=1).
+  Concurrency check = getOpenPositions().length.
+- filter (B): getCreatorHistory(creator) gives launch counts for dev_repeat_rugger
+  (rug labeling lands later via enrichment).
+- Env: DATABASE_URL = Supabase session-pooler URI, human-supplied shell env only.
+  Passwords with + $ / , must be percent-encoded in the URI.
+Open: RLS hardening SQL pending human decision (see diff-from-plan #5).
+---

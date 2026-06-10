@@ -35,3 +35,26 @@ Decision: engines ">=20" for now; core uses no Node-22-only APIs. Human to eithe
 Rationale: Nothing in Wave 1–2 needs 22; don't block the build on an upgrade.
 Alternatives: Hard-require 22 (blocks dev today for no functional gain).
 Date: 2026-06-10
+
+[ADR-004] Hosted Postgres = Supabase project "sentinel-bot" (tztjjxhrvcruewxlujpi)
+Context: Human offered their connected Supabase account for the DB layer.
+Decision: Supabase free tier hosts the Postgres ("sentinel-bot", eu-west-1). Code is
+  vendor-neutral: pure `pg` over DATABASE_URL (session pooler); no supabase-js
+  anywhere. DATABASE_URL is human-supplied shell env, never a .env file.
+Rationale: Zero local install, standard wire protocol, swappable for any Postgres.
+Alternatives: Local Postgres (install burden), Docker (heavier dev loop).
+Caveats: Free tier pauses idle projects (~1 week) — mind the 3–4 day paper run.
+  RLS hardening on the 6 tables surfaced to human, pending decision.
+Date: 2026-06-10
+
+[ADR-005] Bus persistence writes counters; snapshot rows are written at source
+Context: The decisions table requires the input snapshot (NOT NULL jsonb), but the
+  frozen bus-level Decision (ADR-001) deliberately carries no snapshot.
+Decision: db/persist.ts routes the `decision` event to daily buy/skip counters only.
+  decision/ (Agent D) writes the full row via insertDecision(decision, snapshot) at
+  call time. General pattern: modules holding rich context write their own rows; the
+  bus subscriber persists what events carry.
+Rationale: Keeps the frozen contract intact and the audit row complete.
+Alternatives: Add snapshot to the Decision event (contract change, rejected);
+  nullable snapshot column (loses the audit guarantee).
+Date: 2026-06-10
