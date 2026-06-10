@@ -3,8 +3,8 @@
 | # | Title | Agent | Status | Blocked By |
 |---|-------|-------|--------|------------|
 | 1 | wave0-audit-pumpmolt | foundation (report only; human reviews) | READY | — (Gate: human sign-off on report) |
-| 2 | wave1-core | foundation | READY | — (Gate: human freezes contracts) |
-| 3 | wave1-db | foundation | BACKLOG | wave1-core |
+| 2 | wave1-core | foundation | DONE (2026-06-10) | — (contracts frozen, ADR-001) |
+| 3 | wave1-db | foundation | READY | — |
 | 4 | wave2-ingestion | ingestion (A) | BACKLOG | wave1-core, wave1-db (Gate 1: PumpPortal WS) |
 | 5 | wave2-filter | filter (B) | BACKLOG | wave1-core, wave1-db |
 | 6 | wave2-enrichment | enrichment (C) | BACKLOG | wave1-core, wave1-db (Gate 1: data provider sign-off) |

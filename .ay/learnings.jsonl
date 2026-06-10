@@ -1,0 +1,3 @@
+{"date":"2026-06-10","task":"wave1-core","tag":"testing","learning":"Source-hygiene guard tests must match usage patterns (import/require/call), not bare keywords - a doc comment mentioning the banned thing ('no dotenv') tripped /dotenv/."}
+{"date":"2026-06-10","task":"wave1-core","tag":"toolchain","learning":"This machine's npm blocks postinstall scripts (allow-scripts policy). esbuild/vitest still work via optional-dep platform binaries, but if a tool fails with a missing-binary error, check 'npm approve-scripts' first."}
+{"date":"2026-06-10","task":"wave1-core","tag":"conventions","learning":"Repo is ESM + NodeNext: relative TS imports need .js extensions; new module dirs must be added to tsconfig include."}

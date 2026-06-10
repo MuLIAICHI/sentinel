@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+
+# Never created, never committed — secrets are asked for by name (project hard rule)
+.env
+.env.*
+.ay/locks/
