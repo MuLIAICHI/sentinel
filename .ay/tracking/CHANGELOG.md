@@ -18,3 +18,5 @@
 
 ### Changed
 ### Fixed
+- RLS enabled (no policies) on all 6 tables — closes the Supabase anon-key REST
+  path; direct pg connection unaffected (002_enable_rls, resolves ADR-004 caveat).
