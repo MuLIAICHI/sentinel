@@ -15,8 +15,15 @@ import { defaultThresholds, requireEnv } from '../core/config.js';
 import { createLogger } from '../core/logger.js';
 import type { Candidate } from '../core/types.js';
 import { attachPersistence } from '../db/persist.js';
-import { getDailyStats, getKillState } from '../db/queries.js';
+import {
+  getClosedPositions,
+  getDailyStats,
+  getDecisions,
+  getKillState,
+  utcDay,
+} from '../db/queries.js';
 import { closePool } from '../db/client.js';
+import { createApiServer } from '../api/server.js';
 import { evaluate } from '../filter/index.js';
 import {
   bondingCurveProgressPct,
@@ -181,7 +188,23 @@ export async function boot(): Promise<void> {
   sweepTimer.unref();
   stopFns.push(() => clearInterval(sweepTimer));
 
+  // 9. The API server (REST + websocket for the UI) — same process, same bus.
+  const api = createApiServer({
+    bus,
+    // Open positions from the engine (authoritative in-memory state).
+    openPositions: async () => engine.openPositions(),
+    closedPositions: (limit) => getClosedPositions(limit),
+    decisions: (limit) => getDecisions(limit),
+    dailyStats: () => getDailyStats(utcDay(Date.now())),
+    killState: () => getKillState(),
+    activateKill,
+    releaseKill,
+  });
+  const apiPort = await api.start();
+  stopFns.push(() => void api.stop());
+
   log.info('sentinel booted', {
+    apiPort,
     mode: 'paper',
     ripenAgeSec: defaultThresholds.minAgeSeconds,
     killActive,

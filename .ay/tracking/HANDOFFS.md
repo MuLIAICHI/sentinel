@@ -208,3 +208,22 @@ LIVE FINDINGS the api/ui must know:
 - The websocket forwarder: bus.onAny — every BotEvent. Snapshot-on-connect from
   db queries (getOpenPositions, getDecisions, getDailyStats(utcDay(now))).
 ---
+
+---
+[2026-06-12 22:05] integration > ui
+Subject: wave3-api DONE — your data source is live on 127.0.0.1:3001
+Detail: REST: GET /health {ok,killActive,openPositions,uptimeSec}; GET /positions
+{open,closed}; GET /decisions?limit=N (Decision[], latest first); GET /stats
+{stats: DailyStats|null, kill: KillState}. WS on the same port: first frame
+{type:'snapshot', payload:{open,closed,decisions,stats,kill}}, then every
+BotEvent verbatim {type,payload}. Writes: POST /kill {reason?} and POST
+/kill/release ONLY — the UI must not offer anything that enables live trading
+(none exists server-side either). Kill flip live-verified end to end (api →
+risk → bus → engine/orchestrator → db). Gotchas for the UI: stats.passedFilter
+counts BOTH filter passes (label as "filter passes", or derive stages from
+candidate_filtered events on the ws); decisions are RARE by design (~1-2% of
+candidates reach Claude) — the decision feed should also show candidate_filtered
+events or it will look frozen at quiet hours; kill.reason is the last raw string
+written (label, don't parse). Hydrate from snapshot, then apply events;
+reconnect with visible 'stream disconnected' state per the task file.
+---

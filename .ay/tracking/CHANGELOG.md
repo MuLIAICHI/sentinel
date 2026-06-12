@@ -39,6 +39,10 @@
   PM2 config. Live-verified ~90 min on the real feed (0 errors). Free local
   pre-filter added after live discovery of ~28 launches/min — 99%+ of
   candidates now rejected before any paid API call. 272 tests repo-wide.
+- `api/` (task wave3-api): Express + websocket server inside the orchestrator
+  process on 127.0.0.1:3001 — REST snapshots, snapshot-then-stream websocket,
+  and the only two write endpoints (POST /kill, /kill/release). Kill switch
+  flip live-verified end to end. 283 tests repo-wide.
 
 ### Changed
 ### Fixed

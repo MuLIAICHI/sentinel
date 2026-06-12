@@ -13,8 +13,8 @@
 | 9 | wave2-execution | execution (F) | DONE (2026-06-10) | — (ADR-006; live path gated) |
 | 10 | wave2-positions | positions (G) | DONE (2026-06-10) | — |
 | 11 | wave3-orchestrator | integration | DONE (2026-06-12) | — (live-verified; bot running) |
-| 12 | wave3-api | integration | READY | — |
-| 13 | wave3-ui | integration | BACKLOG | wave3-api |
+| 12 | wave3-api | integration | DONE (2026-06-12) | — (kill flip live-verified) |
+| 13 | wave3-ui | integration | READY | — |
 
 Status values: BACKLOG, READY, IN PROGRESS, DONE, BLOCKED
 
