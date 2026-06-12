@@ -183,3 +183,28 @@ GO-LIVE WOULD REQUIRE (flagged): human edits LIVE_TRADING + kill off + explicit
 mode:'live' + keys populated + reconcile-real-fills gap closed + pump.fun program
 id explorer-checked + WALLET_HARD_CAP balance enforcement added.
 ---
+
+---
+[2026-06-12 21:45] integration > all (esp. api/ui)
+Subject: wave3-orchestrator DONE — sentinel runs live in paper mode
+Detail: boot()/shutdown() in orchestrator/index.ts; entry = `source ~/.sentinel-env
+&& npx tsx orchestrator/index.ts` or pm2 start ecosystem.config.cjs (pm2 not yet
+installed/exercised). Live-verified ~90 min against the real feed: zero errors,
+graceful SIGINT shutdown, 500+ candidates evaluated.
+LIVE FINDINGS the api/ui must know:
+- pump.fun launch rate ~28 tokens/min (~40k/day). The funnel's first stage
+  (free local signals: curve + volume from the ring buffer) kills ~99% of
+  ripened candidates BEFORE enrichment; only ~1-2% reach the paid stage.
+- daily_stats.passed_filter counts BOTH filter passes (cheap + full emitted per
+  surviving candidate) — UI should show stages separately: tokens_seen →
+  cheap-passes (passed_filter − full-passes... derive carefully or read
+  candidate_filtered events live) → enriched → decisions → positions.
+- Decision rows are rare by design (only tokens surviving everything reach
+  Claude). Hours can pass without one at quiet times; that is health, not a bug.
+- Kill switch: state is DB row + kill_switch bus event; the orchestrator caches
+  it and PositionEngine auto-flattens. api/ POST /kill must call risk
+  activateKill (never write kill_state directly) — flipping it live is still
+  UNTESTED end-to-end; do that as part of wave3-api verification.
+- The websocket forwarder: bus.onAny — every BotEvent. Snapshot-on-connect from
+  db queries (getOpenPositions, getDecisions, getDailyStats(utcDay(now))).
+---

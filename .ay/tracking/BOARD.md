@@ -12,8 +12,8 @@
 | 8 | wave2-risk | risk (E) | DONE (2026-06-10) | — (SOL=$150 sizing assumption flagged) |
 | 9 | wave2-execution | execution (F) | DONE (2026-06-10) | — (ADR-006; live path gated) |
 | 10 | wave2-positions | positions (G) | DONE (2026-06-10) | — |
-| 11 | wave3-orchestrator | integration | READY | — (Wave 2 complete) |
-| 12 | wave3-api | integration | BACKLOG | wave3-orchestrator |
+| 11 | wave3-orchestrator | integration | DONE (2026-06-12) | — (live-verified; bot running) |
+| 12 | wave3-api | integration | READY | — |
 | 13 | wave3-ui | integration | BACKLOG | wave3-api |
 
 Status values: BACKLOG, READY, IN PROGRESS, DONE, BLOCKED

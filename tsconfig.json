@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["core/**/*.ts", "db/**/*.ts", "filter/**/*.ts", "risk/**/*.ts", "positions/**/*.ts", "ingestion/**/*.ts", "enrichment/**/*.ts", "decision/**/*.ts", "execution/**/*.ts", "tests/**/*.ts"]
+  "include": ["core/**/*.ts", "db/**/*.ts", "filter/**/*.ts", "risk/**/*.ts", "positions/**/*.ts", "ingestion/**/*.ts", "enrichment/**/*.ts", "decision/**/*.ts", "execution/**/*.ts", "orchestrator/**/*.ts", "tests/**/*.ts"]
 }

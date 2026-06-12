@@ -33,6 +33,12 @@
   SellExecutor; vendored pumpmolt trade path @7119de43 with keypair injection and
   verify-before-sign (ADR-006); live path double-gated and unreachable. 37 tests.
   WAVE 2 COMPLETE — 250 tests repo-wide.
+- `orchestrator/` (task wave3-orchestrator): nursery (age-staged evaluation at
+  20 min), fixed six-stage pipeline with un-bypassable risk gate, daily-loss
+  kill + UTC rollover, tick delivery to the exit engine, graceful shutdown,
+  PM2 config. Live-verified ~90 min on the real feed (0 errors). Free local
+  pre-filter added after live discovery of ~28 launches/min — 99%+ of
+  candidates now rejected before any paid API call. 272 tests repo-wide.
 
 ### Changed
 ### Fixed
