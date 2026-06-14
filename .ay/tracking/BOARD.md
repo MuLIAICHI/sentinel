@@ -14,7 +14,7 @@
 | 10 | wave2-positions | positions (G) | DONE (2026-06-10) | — |
 | 11 | wave3-orchestrator | integration | DONE (2026-06-12) | — (live-verified; bot running) |
 | 12 | wave3-api | integration | DONE (2026-06-12) | — (kill flip live-verified) |
-| 13 | wave3-ui | integration | READY | — |
+| 13 | wave3-ui | integration | DONE (2026-06-14) | — (live-verified on :3000; system feature-complete) |
 
 Status values: BACKLOG, READY, IN PROGRESS, DONE, BLOCKED
 

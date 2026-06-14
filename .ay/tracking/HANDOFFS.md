@@ -227,3 +227,28 @@ events or it will look frozen at quiet hours; kill.reason is the last raw string
 written (label, don't parse). Hydrate from snapshot, then apply events;
 reconnect with visible 'stream disconnected' state per the task file.
 ---
+
+---
+[2026-06-14 02:18] integration > all
+Subject: wave3-ui DONE — dashboard is the LAST task; system feature-complete
+Detail: Single dark Next.js dashboard at ui/ (own package tree). 17 files + api/server.ts
+CORS (24 lines). 23 new tests (repo 306). Live-verified serving on :3000 against the
+running bot.
+Gotchas for anyone touching the UI:
+- lib/{types,reducer,format}.ts are PURE and NodeNext-compatible (.js import specifiers)
+  so the ROOT vitest/tsc compiles them. Components/page also use .js specifiers; Next's
+  webpack does NOT do the .js->.ts rewrite by default — next.config.mjs adds
+  webpack.extensionAlias to make it resolve. Keep that config or the build breaks.
+- The reducer is the single source of truth and is pure: wall time arrives via action.now
+  (injected by useStream), never Date.now() inside the reducer. Test it directly.
+- Open-position uPnL/price-distance is ENTRY-relative, not live. positions/engine.ts only
+  emits position_updated after a partial sell and never streams live price/peak. The table
+  shows where exits sit vs entry + a live time-stop countdown. lastPrice/peakPrice tracking
+  is wired + unit-tested, so adding throttled price ticks to the bus later makes it live with
+  ZERO UI change. That's the cleanest future enhancement if you want live distance bars.
+- Network surface is exactly 1 WS + 2 kill POSTs. CORS allowlist is the two localhost:3000
+  loopback origins only — the rig stays 127.0.0.1-bound. No live-trading affordance exists
+  anywhere in app code (grep-verified). Do not add one.
+- To run: bot via `source ~/.sentinel-env && npx tsx orchestrator/index.ts`; UI via
+  `cd ui && npm run dev` → http://localhost:3000.
+---

@@ -42,10 +42,34 @@ export interface ApiServer {
   stop(): Promise<void>;
 }
 
+/** Local dev origins allowed to call the API (the Next dashboard, `npm run dev`). */
+const ALLOWED_ORIGINS = new Set(['http://localhost:3000', 'http://127.0.0.1:3000']);
+
+/**
+ * CORS for the local dashboard only. The bot binds 127.0.0.1 and this allowlist
+ * is limited to the dev UI's loopback origins — it does not open the rig to the
+ * network. Needed so the browser's preflight on the kill POSTs succeeds.
+ */
+function cors(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  const origin = req.headers.origin;
+  if (typeof origin === 'string' && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  }
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+}
+
 /** Build (but do not start) the API server over the injected deps. */
 export function createApiServer(deps: ApiDeps): ApiServer {
   const app = express();
   const startedAt = Date.now();
+  app.use(cors);
   app.use(buildRouter(deps, startedAt));
 
   const server: Server = createServer(app);

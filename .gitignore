@@ -2,6 +2,11 @@ node_modules/
 dist/
 coverage/
 
+# Next.js build artifacts (ui/)
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
 # Never created, never committed — secrets are asked for by name (project hard rule)
 .env
 .env.*

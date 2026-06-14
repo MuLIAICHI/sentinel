@@ -43,6 +43,14 @@
   process on 127.0.0.1:3001 — REST snapshots, snapshot-then-stream websocket,
   and the only two write endpoints (POST /kill, /kill/release). Kill switch
   flip live-verified end to end. 283 tests repo-wide.
+- `ui/` (task wave3-ui): single dark real-time Next.js dashboard (SPEC §5) in
+  its own package tree — pure reducer/format state machine (unit-tested from
+  the root vitest), websocket stream hook with capped-backoff reconnect, and
+  six panels (header w/ PAPER badge + today P&L + KILL SWITCH, funnel,
+  live feed, open positions w/ distance-to-exit, history, stats). Read-only
+  except the kill switch. `api/server.ts` gains a loopback-only CORS allowlist
+  for the dev UI. Live-verified on :3000. 306 tests repo-wide.
+  SYSTEM FEATURE-COMPLETE — all 13 board tasks DONE.
 
 ### Changed
 ### Fixed
