@@ -102,12 +102,34 @@ describe('candidate_filtered', () => {
 });
 
 describe('candidate_enriched', () => {
-  it('increments the enriched counter', () => {
-    const s = apply(initialState(), {
-      type: 'candidate_enriched',
-      payload: { ...candidate('mC'), bondingCurvePct: 40, uniqueHolders: 30, holderGrowthPerMin: 2, top10HolderPct: 20, devSoldPct: 0, devPriorLaunches: 0, devPriorRugs: 0, volumeAccelerating: true, currentMetaTags: [] },
-    });
+  const enrichedPayload = (mint: string) => ({
+    ...candidate(mint),
+    bondingCurvePct: 40,
+    uniqueHolders: 30,
+    holderGrowthPerMin: 2,
+    top10HolderPct: 20,
+    devSoldPct: 0,
+    devPriorLaunches: 0,
+    devPriorRugs: 0,
+    volumeAccelerating: true,
+    currentMetaTags: ['dogs'],
+  });
+
+  it('increments the enriched counter and captures the tokenomics payload', () => {
+    const s = apply(initialState(), { type: 'candidate_enriched', payload: enrichedPayload('mC') });
     expect(s.live.enriched).toBe(1);
+    expect(s.enrichedTokens).toHaveLength(1);
+    expect(s.enrichedTokens[0]).toMatchObject({ mint: 'mC', uniqueHolders: 30, currentMetaTags: ['dogs'] });
+  });
+
+  it('keeps enriched tokens newest-first and caps the list', () => {
+    let s = initialState();
+    for (let i = 0; i < 50; i++) {
+      s = apply(s, { type: 'candidate_enriched', payload: enrichedPayload(`m${i}`) });
+    }
+    expect(s.live.enriched).toBe(50);
+    expect(s.enrichedTokens).toHaveLength(40); // ENRICHED_CAP
+    expect(s.enrichedTokens[0]!.mint).toBe('m49');
   });
 });
 

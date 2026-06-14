@@ -10,6 +10,16 @@
 import type { DashState } from '../lib/reducer.js';
 import type { FeedItem } from '../lib/types.js';
 import { fmtSol } from '../lib/format.js';
+import { pumpFunUrl } from '../lib/links.js';
+
+/** A token symbol that links out to its pump.fun coin page (live chart). */
+function CoinSym({ mint, label }: { mint: string; label: string }) {
+  return (
+    <a className="fsym" href={pumpFunUrl(mint)} target="_blank" rel="noreferrer" title={mint}>
+      {label}
+    </a>
+  );
+}
 
 /** Map a filter rule id to a short label + chip color class + plain-English meaning. */
 const RULE_META: Record<string, { label: string; cls: string; desc: string }> = {
@@ -75,7 +85,7 @@ function Row({ item }: { item: FeedItem }) {
       return (
         <div className="feed-row">
           {at}
-          <span className="fsym">{item.symbol || item.mint.slice(0, 6)}</span>
+          <CoinSym mint={item.mint} label={item.symbol || item.mint.slice(0, 6)} />
           <span className="chip chip-stage">{item.stage}</span>
           {item.rules.map((r) => {
             const meta = RULE_META[r] ?? { label: r, cls: 'chip-stage' };
@@ -92,7 +102,7 @@ function Row({ item }: { item: FeedItem }) {
       return (
         <div className={`feed-row decision ${buy ? 'buy' : 'skip'}`}>
           {at}
-          <span className="fsym">{item.decision.mint.slice(0, 8)}</span>
+          <CoinSym mint={item.decision.mint} label={item.decision.mint.slice(0, 8)} />
           <span className={`chip ${buy ? 'chip-buy' : 'chip-skip'}`}>{item.decision.action}</span>
           <span className="detail">
             {Math.round(item.decision.confidence * 100)}% · {item.decision.reasoning}

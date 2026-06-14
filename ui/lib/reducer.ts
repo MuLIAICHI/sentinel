@@ -12,6 +12,7 @@
 import type {
   BotEvent,
   Decision,
+  EnrichedCandidate,
   FeedItem,
   KillState,
   Position,
@@ -43,6 +44,8 @@ export interface DashState {
   decisions: Decision[];
   open: PositionView[];
   closed: Position[];
+  /** Recent enriched candidates with full tokenomics (newest first, capped). */
+  enrichedTokens: EnrichedCandidate[];
   /** Mints seen in a prior candidate_filtered, to label cheap (1st) vs full (2nd). */
   seenFilterMints: Record<string, 1>;
 }
@@ -56,6 +59,7 @@ export type Action =
 const FEED_CAP = 200;
 const DECISIONS_CAP = 100;
 const CLOSED_CAP = 100;
+const ENRICHED_CAP = 40;
 
 /** The empty dashboard, before any snapshot or event. */
 export function initialState(): DashState {
@@ -68,6 +72,7 @@ export function initialState(): DashState {
     decisions: [],
     open: [],
     closed: [],
+    enrichedTokens: [],
     seenFilterMints: {},
   };
 }
@@ -134,7 +139,11 @@ function onEvent(state: DashState, event: BotEvent, now: number): DashState {
     }
 
     case 'candidate_enriched':
-      return { ...state, live: { ...state.live, enriched: state.live.enriched + 1 } };
+      return {
+        ...state,
+        live: { ...state.live, enriched: state.live.enriched + 1 },
+        enrichedTokens: capped(event.payload, state.enrichedTokens, ENRICHED_CAP),
+      };
 
     case 'decision': {
       const decision = event.payload;

@@ -15,6 +15,7 @@ import { DecisionFeed } from '../components/DecisionFeed.js';
 import { PositionsTable } from '../components/PositionsTable.js';
 import { HistoryTable } from '../components/HistoryTable.js';
 import { StatsPanel } from '../components/StatsPanel.js';
+import { Tokenomics } from '../components/Tokenomics.js';
 
 const SAMPLE_MS = 3000;
 const SERIES_LEN = 40;
@@ -66,6 +67,7 @@ export default function Page() {
 
         <div className="col-right">
           <StatsPanel state={state} />
+          <Tokenomics state={state} />
           <HistoryTable state={state} />
         </div>
       </div>

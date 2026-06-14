@@ -556,6 +556,75 @@ tbody tr:hover {
   font-size: 11.5px;
 }
 
+/* ── tokenomics cards ───────────────────────────────────── */
+.tk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tk-card {
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.tk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.tk-head .spacer {
+  flex: 1;
+}
+.tk-links {
+  display: inline-flex;
+  gap: 7px;
+}
+.tk-links a,
+.coin-link {
+  color: var(--blue);
+  text-decoration: none;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  opacity: 0.85;
+}
+.tk-links a:hover,
+.coin-link:hover {
+  opacity: 1;
+  text-shadow: 0 0 8px rgba(86, 166, 255, 0.5);
+}
+.tk-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px 10px;
+}
+.tk-metric {
+  display: flex;
+  flex-direction: column;
+}
+.tk-v {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.tk-l {
+  font-size: 8.5px;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* clickable symbol in the feed */
+a.fsym {
+  color: var(--text);
+  text-decoration: none;
+}
+a.fsym:hover {
+  color: var(--blue);
+  text-shadow: 0 0 8px rgba(86, 166, 255, 0.4);
+}
+
 .dist {
   display: inline-block;
   min-width: 44px;
