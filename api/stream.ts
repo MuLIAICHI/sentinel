@@ -8,11 +8,12 @@
 import type { WebSocket, WebSocketServer } from 'ws';
 import { createLogger } from '../core/logger.js';
 import type { ApiDeps } from './server.js';
+import { tokenMatches } from './server.js';
 
 const log = createLogger('api/stream');
 
 /** Wire the websocket server to the bus and the snapshot sources. */
-export function attachStream(wss: WebSocketServer, deps: ApiDeps): void {
+export function attachStream(wss: WebSocketServer, deps: ApiDeps, authToken?: string): void {
   // One bus subscription total; fan out to whoever is connected.
   deps.bus.onAny((event) => {
     if (wss.clients.size === 0) return;
@@ -26,7 +27,17 @@ export function attachStream(wss: WebSocketServer, deps: ApiDeps): void {
     }
   });
 
-  wss.on('connection', (socket: WebSocket) => {
+  wss.on('connection', (socket: WebSocket, request) => {
+    // Gate the stream behind the shared token when one is configured. The token
+    // rides as `?token=` on the ws URL (browsers can't set headers on a ws).
+    if (authToken) {
+      const url = new URL(request.url ?? '/', 'http://localhost');
+      if (!tokenMatches(authToken, url.searchParams.get('token'))) {
+        log.warn('ws client rejected: bad token');
+        socket.close(1008, 'unauthorized');
+        return;
+      }
+    }
     log.info('ws client connected', { clients: wss.clients.size });
     void sendSnapshot(socket, deps);
     socket.on('error', () => socket.terminate());

@@ -51,6 +51,14 @@
   except the kill switch. `api/server.ts` gains a loopback-only CORS allowlist
   for the dev UI. Live-verified on :3000. 306 tests repo-wide.
   SYSTEM FEATURE-COMPLETE — all 13 board tasks DONE.
+- Deploy hardening for a cloud paper-validation run (Railway): API token auth
+  (env `API_TOKEN`) gating every data route + the kill switch + the websocket
+  (constant-time compare; `/health` stays open for health-checks), env-driven
+  bind (`API_HOST`/`PORT`) and CORS (`DASHBOARD_ORIGIN`), and env-overridable
+  filter thresholds (`FILTER_*`, defaulting to the SPEC strict strategy) so a
+  validation run can be loosened without a code change. UI gained a password
+  gate. `railway.json` + `DEPLOY.md`. Private key stays OFF the cloud (paper).
+  10 new auth tests (repo 317).
 
 ### Changed
 ### Fixed

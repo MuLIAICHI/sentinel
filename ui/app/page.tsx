@@ -16,11 +16,20 @@ import { PositionsTable } from '../components/PositionsTable.js';
 import { HistoryTable } from '../components/HistoryTable.js';
 import { StatsPanel } from '../components/StatsPanel.js';
 import { Tokenomics } from '../components/Tokenomics.js';
+import { AuthGate } from '../components/AuthGate.js';
 
 const SAMPLE_MS = 3000;
 const SERIES_LEN = 40;
 
 export default function Page() {
+  return (
+    <AuthGate>
+      <Dashboard />
+    </AuthGate>
+  );
+}
+
+function Dashboard() {
   const { state } = useStream();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [throughput, setThroughput] = useState<number[]>([]);

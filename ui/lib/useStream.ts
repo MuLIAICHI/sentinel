@@ -13,6 +13,7 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { reducer, initialState, type DashState } from './reducer.js';
 import type { BotEvent, DailyStats, SnapshotPayload } from './types.js';
+import { authHeaders, wsTokenQuery } from './auth.js';
 
 /** Base of the local API (override via NEXT_PUBLIC_API_BASE for non-default ports). */
 const HTTP_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://127.0.0.1:3001';
@@ -24,7 +25,7 @@ const MAX_BACKOFF_MS = 10_000;
 export async function postKill(reason: string): Promise<boolean> {
   const res = await fetch(`${HTTP_BASE}/kill`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ reason }),
   });
   return res.ok;
@@ -32,8 +33,19 @@ export async function postKill(reason: string): Promise<boolean> {
 
 /** Release the kill switch via the API. Returns true on a 2xx. */
 export async function postKillRelease(): Promise<boolean> {
-  const res = await fetch(`${HTTP_BASE}/kill/release`, { method: 'POST' });
+  const res = await fetch(`${HTTP_BASE}/kill/release`, { method: 'POST', headers: authHeaders() });
   return res.ok;
+}
+
+/** Probe the authed surface: 'ok' | 'auth' (401) | 'down' (unreachable). */
+export async function probeAuth(): Promise<'ok' | 'auth' | 'down'> {
+  try {
+    const res = await fetch(`${HTTP_BASE}/stats`, { headers: authHeaders() });
+    if (res.status === 401) return 'auth';
+    return res.ok ? 'ok' : 'down';
+  } catch {
+    return 'down';
+  }
 }
 
 /** Connect to the live stream and reduce it into a {@link DashState}. */
@@ -49,7 +61,7 @@ export function useStream(): { state: DashState } {
 
     function connect() {
       dispatch({ kind: 'conn', conn: 'connecting' });
-      socket = new WebSocket(WS_URL);
+      socket = new WebSocket(`${WS_URL}${wsTokenQuery()}`);
 
       socket.onopen = () => {
         backoffRef.current = 500;
@@ -91,7 +103,7 @@ export function useStream(): { state: DashState } {
     // the stats panel stays current instead of freezing at the connect snapshot.
     async function pollStats() {
       try {
-        const res = await fetch(`${HTTP_BASE}/stats`);
+        const res = await fetch(`${HTTP_BASE}/stats`, { headers: authHeaders() });
         if (!res.ok) return;
         const body = (await res.json()) as { stats: DailyStats | null };
         dispatch({ kind: 'stats', stats: body.stats ?? null });

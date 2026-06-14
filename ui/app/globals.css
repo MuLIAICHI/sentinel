@@ -615,6 +615,68 @@ tbody tr:hover {
   letter-spacing: 0.8px;
 }
 
+/* ── auth gate ──────────────────────────────────────────── */
+.gate-screen {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.gate-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 280px;
+  padding: 28px 24px;
+  background: linear-gradient(180deg, var(--panel-top), var(--panel-bot));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 0 var(--panel-hi) inset, 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+.gate-card .brand {
+  font-size: 18px;
+}
+.gate-sub {
+  font-size: 11px;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+.gate-card input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+}
+.gate-card input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(86, 166, 255, 0.15);
+}
+.gate-card button {
+  padding: 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(86, 166, 255, 0.4);
+  background: rgba(86, 166, 255, 0.12);
+  color: var(--blue);
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.gate-card button:hover:not(:disabled) {
+  background: rgba(86, 166, 255, 0.22);
+}
+.gate-error {
+  color: var(--red);
+  font-size: 11px;
+}
+
 /* clickable symbol in the feed */
 a.fsym {
   color: var(--text);

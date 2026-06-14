@@ -11,7 +11,7 @@
  */
 
 import { bus } from '../core/bus.js';
-import { defaultThresholds, requireEnv } from '../core/config.js';
+import { defaultThresholds, requireEnv, optionalEnv, apiBindConfig } from '../core/config.js';
 import { createLogger } from '../core/logger.js';
 import type { Candidate } from '../core/types.js';
 import { attachPersistence } from '../db/persist.js';
@@ -199,8 +199,11 @@ export async function boot(): Promise<void> {
     killState: () => getKillState(),
     activateKill,
     releaseKill,
+    authToken: optionalEnv('API_TOKEN'),
+    dashboardOrigin: optionalEnv('DASHBOARD_ORIGIN'),
   });
-  const apiPort = await api.start();
+  const { port, host } = apiBindConfig();
+  const apiPort = await api.start(port, host);
   stopFns.push(() => void api.stop());
 
   log.info('sentinel booted', {

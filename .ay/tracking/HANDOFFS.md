@@ -252,3 +252,24 @@ Gotchas for anyone touching the UI:
 - To run: bot via `source ~/.sentinel-env && npx tsx orchestrator/index.ts`; UI via
   `cd ui && npm run dev` → http://localhost:3000.
 ---
+
+---
+[2026-06-14 15:05] integration > all
+Subject: Cloud deploy hardening (Railway paper-validation) — auth + env config
+Detail: Prepared a deployable, auth-gated build for a 4-day paper-validation run.
+- API_TOKEN (injected via ApiDeps.authToken, read from env in orchestrator) gates
+  all REST except /health, the kill POSTs, and the ws (?token=). Local rig with no
+  API_TOKEN is unchanged (no auth). tokenMatches() is constant-time.
+- API bind is env-driven: API_HOST (default 127.0.0.1; set 0.0.0.0 on Railway) +
+  PORT (Railway injects). CORS allows DASHBOARD_ORIGIN in addition to loopback.
+- Filter thresholds are now env-overridable (FILTER_CURVE_MIN/MAX, FILTER_TOP10_MAX,
+  FILTER_DEV_SOLD_MAX, FILTER_MIN_AGE_SEC) with the SPEC strict values as defaults.
+  The validation run uses a "moderate" loosen (curve 40-92, top10 40, dev-sold 70)
+  set ONLY as Railway env — code strategy unchanged; delete the vars to go strict.
+- UI: AuthGate password screen + ui/lib/auth.ts (token in localStorage, sent as
+  x-api-token header + ws ?token=). NEXT_PUBLIC_API_BASE points at the bot URL.
+- tsx moved to dependencies (Railway omits devDeps); npm start = tsx orchestrator.
+- HARD RULES held: LIVE_TRADING still false; SOLANA_PRIVATE_KEY is NOT set on the
+  cloud (paper never signs); no remote push performed — the operator drives the
+  Railway deploy and pastes secrets by name. See DEPLOY.md.
+---
