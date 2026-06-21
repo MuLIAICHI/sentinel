@@ -77,7 +77,7 @@ body {
 
 .content {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 416px;
   gap: 10px;
   flex: 1;
   min-height: 0;
@@ -92,6 +92,32 @@ body {
   overflow: hidden;
 }
 
+/* Height distribution so panels aren't squeezed and nothing is clipped.
+   Fixed-content panels keep their natural height; the long lists scroll. */
+.col-right > .panel:nth-child(1) {
+  flex: 0 0 auto;
+} /* stats — always fully visible (hero + grid) */
+.col-right > .panel:nth-child(2) {
+  flex: 1 1 0;
+  min-height: 150px;
+} /* enriched tokenomics — scrolls */
+.col-right > .panel:nth-child(3) {
+  flex: 1.6 1 0;
+  min-height: 220px;
+} /* history — scrolls, gets the most room */
+
+.col-left > .panel:nth-child(1) {
+  flex: 0 0 auto;
+} /* funnel — natural height */
+.col-left > .panel:nth-child(2) {
+  flex: 0 1 auto;
+  max-height: 32vh;
+} /* open positions — caps + scrolls */
+.col-left > .panel:nth-child(3) {
+  flex: 1 1 0;
+  min-height: 220px;
+} /* live feed — scrolls */
+
 /* ── panels ─────────────────────────────────────────────── */
 .panel {
   position: relative;
@@ -105,18 +131,28 @@ body {
 }
 
 .panel h2 {
-  margin: 0 0 10px;
+  margin: 0 0 11px;
   font-size: 10px;
   letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
 }
+.panel h2::before {
+  content: '';
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--blue), var(--cyan));
+  box-shadow: 0 0 8px rgba(56, 224, 208, 0.45);
+  flex-shrink: 0;
+}
 .panel h2 .count {
-  color: var(--muted);
+  color: var(--faint);
+  font-weight: 600;
 }
 
 /* ── header ─────────────────────────────────────────────── */
@@ -524,29 +560,103 @@ tbody tr:hover {
   border-color: rgba(86, 166, 255, 0.3);
 }
 
-/* ── stats grid ─────────────────────────────────────────── */
-.stat-grid {
+/* ── stats: hero row + grid ─────────────────────────────── */
+.stat-hero-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 9px;
+  margin-bottom: 9px;
 }
-.stat {
-  background: rgba(255, 255, 255, 0.015);
+.stat-hero {
+  position: relative;
   border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  padding: 9px 11px;
+  border-radius: 10px;
+  padding: 13px 14px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0));
+  overflow: hidden;
 }
-.stat .v {
-  font-size: 17px;
+.stat-hero::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+  opacity: 0.7;
+}
+.stat-hero.pos {
+  background: linear-gradient(180deg, var(--green-dim), rgba(255, 255, 255, 0));
+}
+.stat-hero.pos::before {
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+}
+.stat-hero.neg {
+  background: linear-gradient(180deg, var(--red-dim), rgba(255, 255, 255, 0));
+}
+.stat-hero.neg::before {
+  background: linear-gradient(90deg, var(--red), var(--amber));
+}
+.stat-hero .hv {
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.6px;
+  font-variant-numeric: tabular-nums;
+}
+.stat-hero.pos .hv {
+  color: var(--green);
+  text-shadow: 0 0 18px rgba(52, 211, 153, 0.25);
+}
+.stat-hero.neg .hv {
+  color: var(--red);
+  text-shadow: 0 0 18px rgba(251, 111, 132, 0.22);
+}
+.stat-hero .hv .u {
+  font-size: 14px;
   font-weight: 700;
-  line-height: 1.1;
+  opacity: 0.65;
+  margin-left: 1px;
 }
-.stat .l {
+.stat-hero .hl {
   font-size: 9px;
   color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-top: 3px;
+  margin-top: 7px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 7px;
+}
+.stat {
+  position: relative;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 9px 10px;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.stat:hover {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.035);
+  transform: translateY(-1px);
+}
+.stat .v {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.stat .l {
+  font-size: 8.5px;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 4px;
+  white-space: nowrap;
 }
 
 .empty {
@@ -560,19 +670,31 @@ tbody tr:hover {
 .tk-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
 }
 .tk-card {
-  background: rgba(255, 255, 255, 0.018);
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.006));
   border: 1px solid var(--border-soft);
+  border-left: 2px solid rgba(86, 166, 255, 0.45);
   border-radius: 8px;
-  padding: 9px 11px;
+  padding: 10px 12px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.tk-card:hover {
+  border-color: var(--border);
+  border-left-color: var(--cyan);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
 }
 .tk-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 9px;
+}
+.tk-head .sym {
+  font-size: 13px;
 }
 .tk-head .spacer {
   flex: 1;
@@ -597,22 +719,28 @@ tbody tr:hover {
 .tk-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 7px 10px;
+  gap: 9px 10px;
 }
 .tk-metric {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.014);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
 }
 .tk-v {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 .tk-l {
-  font-size: 8.5px;
+  font-size: 8px;
   color: var(--faint);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
 }
 
 /* ── auth gate ──────────────────────────────────────────── */

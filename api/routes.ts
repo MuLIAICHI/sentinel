@@ -66,6 +66,14 @@ export function buildRouter(deps: ApiDeps, startedAt: number): Router {
     }),
   );
 
+  router.get(
+    '/excursion',
+    safe(async (req, res) => {
+      const limit = Math.min(Number(req.query.limit) || 1000, 2000);
+      res.json(await deps.excursions(limit));
+    }),
+  );
+
   router.post(
     '/kill',
     safe(async (req, res) => {

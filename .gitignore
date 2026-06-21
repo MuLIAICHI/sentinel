@@ -10,4 +10,15 @@ next-env.d.ts
 # Never created, never committed — secrets are asked for by name (project hard rule)
 .env
 .env.*
+!.env.example
 .ay/locks/
+
+# Local agent tooling and third-party skills (not part of the project)
+.claude/
+.agents/
+
+# Throwaway analysis scripts (reference local paths / dead infra)
+scripts/
+
+# stray artifacts
+nul

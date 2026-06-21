@@ -12,9 +12,11 @@ export {
   checkTimeStop,
   checkTrailingStop,
   defaultExitConfig,
+  scalpExitConfig,
+  selectExitConfig,
   evaluateExit,
 } from './rules.js';
 export type { ExitAction, ExitConfig, ExitReason, RuleInput } from './rules.js';
 
 export { PositionEngine } from './engine.js';
-export type { PositionEngineOptions, SellExecutor } from './engine.js';
+export type { PositionEngineOptions, PositionExcursion, SellExecutor } from './engine.js';

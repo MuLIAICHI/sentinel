@@ -44,6 +44,7 @@ export function makeDeps(overrides: Partial<ApiDeps> = {}): ApiDeps {
       realizedPnlSol: 0,
     })),
     killState: vi.fn(async () => ({ active: false, reason: '', updatedAt: 'now' })),
+    excursions: vi.fn(async () => []),
     activateKill: vi.fn(async () => undefined),
     releaseKill: vi.fn(async () => undefined),
     ...overrides,

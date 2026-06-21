@@ -28,7 +28,14 @@ export type KnownEnvVar =
   | 'FILTER_CURVE_MIN'
   | 'FILTER_CURVE_MAX'
   | 'FILTER_TOP10_MAX'
-  | 'FILTER_DEV_SOLD_MAX';
+  | 'FILTER_DEV_SOLD_MAX'
+  // ── exit tuning (optional; unset = SPEC default profile, see positions/) ──
+  | 'EXIT_PROFILE'         // 'default' | 'scalp'; selects the exit threshold set
+  | 'EXIT_TP_TRIGGER'      // take-profit trigger, fraction over entry (0.4 = +40%)
+  | 'EXIT_TP_SELL'         // take-profit sell fraction (0.6 = sell 60%)
+  | 'EXIT_TRAIL'           // trailing giveback from peak, fraction (0.15 = 15%)
+  | 'EXIT_HARD_STOP'       // hard stop loss from entry, fraction (0.18 = −18%)
+  | 'EXIT_TIME_STOP_SEC';  // time stop in seconds (480 = 8 min)
 
 /** Thresholds for the deterministic filter rules (SPEC §4, filter/ section). */
 export interface FilterThresholds {

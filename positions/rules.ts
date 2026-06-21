@@ -43,6 +43,48 @@ export const defaultExitConfig: ExitConfig = {
   timeStopMs: 45 * 60 * 1000,
 };
 
+/**
+ * Fast momentum "scalp" profile (experimental, paper-only). The 2026-06
+ * backtest found the bonding curve is parabolic-then-fade on a minutes
+ * timescale and our 20-min entry lands after the peak 72% of the time. Paired
+ * with an earlier entry (FILTER_MIN_AGE_SEC), this profile rides the spike and
+ * bails on the first fade: take a bigger partial sooner, trail tight, stop
+ * tight, and cap the hold at minutes — NOT the SPEC survivor regime.
+ */
+export const scalpExitConfig: ExitConfig = {
+  takeProfitTriggerPct: 0.4,
+  takeProfitSellFraction: 0.6,
+  trailingGivebackPct: 0.15,
+  hardStopPct: 0.18,
+  timeStopMs: 8 * 60 * 1000,
+};
+
+/** Named exit profiles selectable at boot (via EXIT_PROFILE). */
+const EXIT_PROFILES: Record<string, ExitConfig> = {
+  default: defaultExitConfig,
+  scalp: scalpExitConfig,
+};
+
+/**
+ * Pick an exit profile by name and apply optional per-field overrides — pure,
+ * no I/O. Unknown/undefined `profile` falls back to {@link defaultExitConfig}
+ * (the SPEC strategy stays the safe default). `overrides` lets a run tune any
+ * field without a code change; only defined fields override the base profile.
+ */
+export function selectExitConfig(
+  profile: string | undefined,
+  overrides?: Partial<ExitConfig>,
+): ExitConfig {
+  const base = (profile && EXIT_PROFILES[profile]) || defaultExitConfig;
+  if (!overrides) return { ...base };
+  const merged: ExitConfig = { ...base };
+  for (const key of Object.keys(overrides) as Array<keyof ExitConfig>) {
+    const v = overrides[key];
+    if (v !== undefined) merged[key] = v;
+  }
+  return merged;
+}
+
 /** Everything a rule may look at for one tick. Rules never reach outside this. */
 export interface RuleInput {
   /** The open position being evaluated. */

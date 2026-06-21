@@ -47,12 +47,41 @@ export type SellExecutor = (
   reason: ExitReason,
 ) => Promise<{ exitPrice: number }>;
 
+/**
+ * Intra-trade price path, reported via {@link PositionEngineOptions.onExcursion}
+ * when a position fully closes. Persisted to its own table so backtests get the
+ * exact max-favorable / max-adverse excursion without on-chain reconstruction.
+ * Kept OUT of the frozen Position contract on purpose.
+ */
+export interface PositionExcursion {
+  /** Position id (natural key). */
+  id: string;
+  mint: string;
+  entryPrice: number;
+  /** Highest price seen between entry and close (max favorable excursion). */
+  peakPrice: number;
+  /** Lowest price seen between entry and close (max adverse excursion). */
+  troughPrice: number;
+  /** When the peak was first reached (unix ms). */
+  peakAt: number;
+  /** When the trough was first reached (unix ms). */
+  troughAt: number;
+  /** When the position fully closed (unix ms). */
+  closedAt: number;
+}
+
 /** Per-position state the engine tracks beyond the Position record itself. */
 interface Tracked {
   /** The engine's own mutable copy of the position. */
   position: Position;
   /** Highest price seen since entry (starts at entryPrice). */
   peakPrice: number;
+  /** Lowest price seen since entry (starts at entryPrice). */
+  troughPrice: number;
+  /** When the peak was first reached (unix ms; starts at entryAt). */
+  peakAt: number;
+  /** When the trough was first reached (unix ms; starts at entryAt). */
+  troughAt: number;
   /** Whether the once-only take-profit partial has fired. */
   takenProfit: boolean;
   /** Cumulative SOL received across all sells, for realized P&L. */
@@ -71,6 +100,12 @@ export interface PositionEngineOptions {
   config?: ExitConfig;
   /** Clock used when a caller omits nowMs. Defaults to Date.now. Inject in tests. */
   now?: () => number;
+  /**
+   * Reported once per position when it fully closes, with its intra-trade
+   * price path. Injected by the orchestrator (which persists it) — the engine
+   * itself never touches the DB. Failures here must not affect the close.
+   */
+  onExcursion?: (excursion: PositionExcursion) => void;
 }
 
 export class PositionEngine {
@@ -78,6 +113,7 @@ export class PositionEngine {
   private readonly bus: Bus;
   private readonly config: ExitConfig;
   private readonly now: () => number;
+  private readonly onExcursion?: (excursion: PositionExcursion) => void;
   /** Open positions by position id. */
   private readonly tracked = new Map<string, Tracked>();
   /** Open position ids by mint, for tick routing. */
@@ -89,6 +125,7 @@ export class PositionEngine {
     this.bus = options.bus ?? singletonBus;
     this.config = options.config ?? defaultExitConfig;
     this.now = options.now ?? Date.now;
+    if (options.onExcursion) this.onExcursion = options.onExcursion;
 
     // Auto-track positions opened anywhere in the pipeline.
     this.bus.on('position_opened', (position) => this.open(position));
@@ -114,6 +151,9 @@ export class PositionEngine {
     this.tracked.set(position.id, {
       position: { ...position },
       peakPrice: position.entryPrice,
+      troughPrice: position.entryPrice,
+      peakAt: position.entryAt,
+      troughAt: position.entryAt,
       takenProfit: false,
       proceedsSol: 0,
       pending: false,
@@ -145,7 +185,14 @@ export class PositionEngine {
     for (const id of [...ids]) {
       const t = this.tracked.get(id);
       if (!t || t.pending) continue;
-      if (price > t.peakPrice) t.peakPrice = price;
+      if (price > t.peakPrice) {
+        t.peakPrice = price;
+        t.peakAt = at;
+      }
+      if (price < t.troughPrice) {
+        t.troughPrice = price;
+        t.troughAt = at;
+      }
       const action = evaluateExit({
         position: t.position,
         currentPrice: price,
@@ -204,6 +251,23 @@ export class PositionEngine {
       };
       this.untrack(t.position.id, t.position.mint);
       this.bus.emit({ type: 'position_closed', payload: closed });
+      if (this.onExcursion) {
+        try {
+          this.onExcursion({
+            id: t.position.id,
+            mint: t.position.mint,
+            entryPrice: t.position.entryPrice,
+            peakPrice: t.peakPrice,
+            troughPrice: t.troughPrice,
+            peakAt: t.peakAt,
+            troughAt: t.troughAt,
+            closedAt: nowMs,
+          });
+        } catch (err) {
+          // Excursion logging is best-effort and must never affect the close.
+          log.error('onExcursion failed', { id: t.position.id, error: String(err) });
+        }
+      }
       log.info('position closed', {
         id: closed.id,
         mint: closed.mint,

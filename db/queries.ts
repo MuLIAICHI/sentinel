@@ -183,6 +183,98 @@ export async function getClosedPositions(limit = 100): Promise<Position[]> {
   return rows.map(rowToPosition);
 }
 
+/** Intra-trade price path captured by the exit engine at close. */
+export interface PositionExcursionRecord {
+  id: string;
+  mint: string;
+  entryPrice: number;
+  peakPrice: number;
+  troughPrice: number;
+  peakAt: number;
+  troughAt: number;
+  closedAt: number;
+}
+
+/** Record a closed position's max-favorable/adverse excursion (idempotent on id). */
+export async function upsertPositionExcursion(e: PositionExcursionRecord): Promise<void> {
+  await query(
+    `INSERT INTO position_excursion
+       (position_id, mint, entry_price, peak_price, trough_price, peak_at, trough_at, closed_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (position_id) DO UPDATE SET
+       peak_price   = EXCLUDED.peak_price,
+       trough_price = EXCLUDED.trough_price,
+       peak_at      = EXCLUDED.peak_at,
+       trough_at    = EXCLUDED.trough_at,
+       closed_at    = EXCLUDED.closed_at`,
+    [e.id, e.mint, e.entryPrice, e.peakPrice, e.troughPrice, e.peakAt, e.troughAt, e.closedAt],
+  );
+}
+
+/** Joined excursion + position view for fill/slippage analysis (newest first). */
+export interface ExcursionView {
+  positionId: string;
+  symbol: string;
+  mint: string;
+  entryPrice: number;
+  exitPrice: number | null;
+  exitReason: string | null;
+  realizedPnlSol: number | null;
+  entrySol: number;
+  amountTokens: number;
+  entryAt: number;
+  exitAt: number | null;
+  peakPrice: number;
+  troughPrice: number;
+  peakAt: number;
+  troughAt: number;
+}
+
+/** Closed positions joined to their recorded price path (max favorable/adverse). */
+export async function getPositionExcursions(limit = 1000): Promise<ExcursionView[]> {
+  const rows = await query<{
+    position_id: string;
+    symbol: string;
+    mint: string;
+    entry_price: number;
+    exit_price: number | null;
+    exit_reason: string | null;
+    realized_pnl_sol: number | null;
+    entry_sol: number;
+    amount_tokens: number;
+    entry_at: string;
+    exit_at: string | null;
+    peak_price: number;
+    trough_price: number;
+    peak_at: string;
+    trough_at: string;
+  }>(
+    `SELECT e.position_id, p.symbol, p.mint, p.entry_price, p.exit_price, p.exit_reason,
+            p.realized_pnl_sol, p.entry_sol, p.amount_tokens, p.entry_at, p.exit_at,
+            e.peak_price, e.trough_price, e.peak_at, e.trough_at
+     FROM position_excursion e JOIN positions p ON p.id = e.position_id
+     ORDER BY p.exit_at DESC NULLS LAST LIMIT $1`,
+    [limit],
+  );
+  return rows.map((r) => ({
+    positionId: r.position_id,
+    symbol: r.symbol,
+    mint: r.mint,
+    entryPrice: r.entry_price,
+    exitPrice: r.exit_price,
+    exitReason: r.exit_reason,
+    realizedPnlSol: r.realized_pnl_sol,
+    entrySol: r.entry_sol,
+    amountTokens: r.amount_tokens,
+    entryAt: Number(r.entry_at),
+    exitAt: r.exit_at === null ? null : Number(r.exit_at),
+    peakPrice: r.peak_price,
+    troughPrice: r.trough_price,
+    peakAt: Number(r.peak_at),
+    troughAt: Number(r.trough_at),
+  }));
+}
+
 /** Atomically increment a daily_stats counter, creating the day row if needed. */
 export async function bumpDailyStat(day: string, field: DailyStatCounter, by = 1): Promise<void> {
   if (!DAILY_COUNTERS.includes(field)) {

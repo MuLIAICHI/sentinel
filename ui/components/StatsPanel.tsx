@@ -30,13 +30,31 @@ export function StatsPanel({ state }: { state: DashState }) {
   const winRate = closed.length > 0 ? Math.round((wins / closed.length) * 100) : 0;
 
   const realized = s?.realizedPnlSol ?? 0;
+  const pnlCls = realized > 0 ? 'pos' : realized < 0 ? 'neg' : 'flat';
 
   return (
     <section className="panel">
-      <h2>stats — {s?.day ?? 'today'}</h2>
+      <h2>
+        stats <span className="count">— {s?.day ?? 'today'}</span>
+      </h2>
+
+      <div className="stat-hero-row">
+        <div className={`stat-hero ${pnlCls}`}>
+          <div className="hv">{fmtSol(realized)}</div>
+          <div className="hl">realized p&l</div>
+        </div>
+        <div className="stat-hero">
+          <div className="hv">
+            {winRate}
+            <span className="u">%</span>
+          </div>
+          <div className="hl">
+            win rate · {wins}/{closed.length}
+          </div>
+        </div>
+      </div>
+
       <div className="stat-grid">
-        <Stat value={fmtSol(realized)} label="realized p&l" cls={realized > 0 ? 'pos' : realized < 0 ? 'neg' : 'flat'} />
-        <Stat value={`${winRate}%`} label="win rate" />
         <Stat value={`${skipRate}%`} label="skip rate" />
         <Stat value={String(s?.tokensSeen ?? 0)} label="tokens seen" />
         <Stat value={String(s?.enriched ?? 0)} label="enriched" />

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Bus } from '../../core/bus.js';
 import type { Position } from '../../core/types.js';
-import { PositionEngine, type SellExecutor } from '../../positions/index.js';
+import {
+  PositionEngine,
+  type PositionExcursion,
+  type SellExecutor,
+} from '../../positions/index.js';
 
 const ENTRY_AT = 1_700_000_000_000;
 
@@ -188,5 +192,49 @@ describe('PositionEngine', () => {
     await engine.onTick('MintCCC', 1.9, ENTRY_AT + 120_000);
     expect(closed).toHaveLength(2);
     expect(closed[1]?.exitReason).toBe('kill_switch');
+  });
+});
+
+describe('PositionEngine excursion reporting', () => {
+  it('reports peak/trough and their timestamps when a position fully closes', async () => {
+    const bus = new Bus();
+    const excursions: PositionExcursion[] = [];
+    // Default config: hard stop at −35% (floor 0.65). Fill the closing sell at market.
+    const { executor } = makeMockExecutor(() => 0.6);
+    const engine = new PositionEngine({
+      executor,
+      bus,
+      onExcursion: (e) => excursions.push(e),
+    });
+
+    engine.open(makePosition()); // entryPrice 1.0, entryAt ENTRY_AT
+
+    // Peak at +50% (below the +80% TP, so nothing fires), then crash through −35%.
+    await engine.onTick('MintAAA', 1.5, ENTRY_AT + 60_000); // new peak, no trigger
+    await engine.onTick('MintAAA', 0.6, ENTRY_AT + 120_000); // ≤ −35% → hard stop closes
+
+    expect(excursions).toHaveLength(1);
+    expect(excursions[0]).toEqual({
+      id: 'pos-1',
+      mint: 'MintAAA',
+      entryPrice: 1.0,
+      peakPrice: 1.5,
+      troughPrice: 0.6,
+      peakAt: ENTRY_AT + 60_000,
+      troughAt: ENTRY_AT + 120_000,
+      closedAt: ENTRY_AT + 120_000,
+    });
+  });
+
+  it('does not report an excursion on a partial (still-open) sell', async () => {
+    const bus = new Bus();
+    const excursions: PositionExcursion[] = [];
+    const { executor } = makeMockExecutor(() => 1.8);
+    const engine = new PositionEngine({ executor, bus, onExcursion: (e) => excursions.push(e) });
+
+    engine.open(makePosition());
+    await engine.onTick('MintAAA', 1.8, ENTRY_AT + 60_000); // +80% → take-profit partial, stays open
+
+    expect(excursions).toHaveLength(0);
   });
 });

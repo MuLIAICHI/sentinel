@@ -17,7 +17,7 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import type { Bus } from '../core/bus.js';
 import type { Decision, Position } from '../core/types.js';
-import type { DailyStats, KillState } from '../db/queries.js';
+import type { DailyStats, ExcursionView, KillState } from '../db/queries.js';
 import { createLogger } from '../core/logger.js';
 import { buildRouter } from './routes.js';
 import { attachStream } from './stream.js';
@@ -35,6 +35,8 @@ export interface ApiDeps {
   decisions(limit?: number): Promise<Decision[]>;
   dailyStats(): Promise<DailyStats | undefined>;
   killState(): Promise<KillState>;
+  /** Closed-position price paths (peak/trough) for fill/slippage analysis. */
+  excursions(limit?: number): Promise<ExcursionView[]>;
   activateKill(reason: string): Promise<void>;
   releaseKill(reason: string): Promise<void>;
   /** When set, REST (except /health) and the websocket require this token. */

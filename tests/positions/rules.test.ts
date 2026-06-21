@@ -3,6 +3,8 @@ import type { Position } from '../../core/types.js';
 import {
   defaultExitConfig,
   evaluateExit,
+  scalpExitConfig,
+  selectExitConfig,
   type RuleInput,
 } from '../../positions/index.js';
 
@@ -139,5 +141,39 @@ describe('precedence — multiple rules on one tick', () => {
 describe('no trigger', () => {
   it('returns none on a quiet tick', () => {
     expect(evaluateExit(input())).toEqual({ kind: 'none' });
+  });
+});
+
+describe('selectExitConfig', () => {
+  it('returns the SPEC default profile when name is undefined', () => {
+    expect(selectExitConfig(undefined)).toEqual(defaultExitConfig);
+  });
+
+  it('falls back to default for an unknown profile name', () => {
+    expect(selectExitConfig('nope')).toEqual(defaultExitConfig);
+  });
+
+  it('selects the scalp profile by name', () => {
+    expect(selectExitConfig('scalp')).toEqual(scalpExitConfig);
+  });
+
+  it('scalp is faster/tighter than default on every axis', () => {
+    expect(scalpExitConfig.takeProfitTriggerPct).toBeLessThan(defaultExitConfig.takeProfitTriggerPct);
+    expect(scalpExitConfig.takeProfitSellFraction).toBeGreaterThan(defaultExitConfig.takeProfitSellFraction);
+    expect(scalpExitConfig.trailingGivebackPct).toBeLessThan(defaultExitConfig.trailingGivebackPct);
+    expect(scalpExitConfig.hardStopPct).toBeLessThan(defaultExitConfig.hardStopPct);
+    expect(scalpExitConfig.timeStopMs).toBeLessThan(defaultExitConfig.timeStopMs);
+  });
+
+  it('applies only the supplied per-field overrides onto the base profile', () => {
+    const cfg = selectExitConfig('scalp', { hardStopPct: 0.1 });
+    expect(cfg.hardStopPct).toBe(0.1); // overridden
+    expect(cfg.timeStopMs).toBe(scalpExitConfig.timeStopMs); // untouched
+    expect(cfg.trailingGivebackPct).toBe(scalpExitConfig.trailingGivebackPct); // untouched
+  });
+
+  it('does not mutate the base profile constant', () => {
+    selectExitConfig('default', { hardStopPct: 0.99 });
+    expect(defaultExitConfig.hardStopPct).toBe(0.35);
   });
 });

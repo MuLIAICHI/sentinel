@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sentinel - Post-Mortem of a pump.fun Trading Bot</title>
+<meta name="description" content="We built a complete automated trading bot for pump.fun memecoins, ran it on live data, and killed it. Here is what the data said, and the structural reason it has no edge." />
+<meta property="og:title" content="Sentinel - Post-Mortem of a pump.fun Trading Bot" />
+<meta property="og:description" content="93 trades, 31% win rate, negative expectancy, $0 real money lost. The structural reason a stop-loss cannot work on these coins, proven with on-chain fills." />
+<meta property="og:type" content="article" />
+<style>
+  :root {
+    --bg: #07090d;
+    --bg-2: #0a0d12;
+    --panel: #0d1117;
+    --panel-2: #0b0e14;
+    --border: #1a212e;
+    --border-soft: #141a25;
+    --text: #e9edf5;
+    --muted: #8a93a7;
+    --faint: #565e72;
+    --accent: #38e0d0;
+    --accent-dim: rgba(56, 224, 208, 0.12);
+    --pos: #35d6a4;
+    --neg: #fb6f84;
+    --neg-dim: rgba(251, 111, 132, 0.13);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Code", Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif;
+    --maxw: 1080px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+    background-image:
+      radial-gradient(900px 500px at 80% -10%, rgba(56, 224, 208, 0.06), transparent 60%),
+      linear-gradient(rgba(120, 140, 180, 0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120, 140, 180, 0.022) 1px, transparent 1px);
+    background-size: auto, 34px 34px, 34px 34px;
+  }
+  ::selection { background: rgba(56, 224, 208, 0.25); }
+  a { color: var(--accent); text-decoration: none; }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .pos { color: var(--pos); }
+  .neg { color: var(--neg); }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* nav */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(10px);
+    background: rgba(7, 9, 13, 0.72);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .nav-in {
+    max-width: var(--maxw); margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; gap: 18px; height: 60px;
+  }
+  .brand { font-weight: 700; letter-spacing: 0.5px; font-size: 15px; }
+  .brand b { color: var(--accent); }
+  .nav-links { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+  .nav-links a { color: var(--muted); font-size: 13px; letter-spacing: 0.2px; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    color: var(--accent) !important;
+    border: 1px solid rgba(56, 224, 208, 0.4);
+    padding: 7px 13px; border-radius: 7px; font-size: 12.5px;
+  }
+  .nav-cta:hover { background: var(--accent-dim); }
+  @media (max-width: 680px) { .nav-hide { display: none; } }
+
+  /* hero */
+  header.hero { padding: 76px 0 40px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--accent);
+  }
+  h1 {
+    font-size: clamp(34px, 6vw, 60px); line-height: 1.04; letter-spacing: -1.4px;
+    margin: 18px 0 0; font-weight: 750; max-width: 16ch;
+  }
+  .lede { color: var(--muted); font-size: 18px; max-width: 56ch; margin: 20px 0 0; }
+  .hero-cta { margin-top: 30px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 12px 18px; border-radius: 9px; border: 1px solid transparent;
+    transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: #04201d; }
+  .btn-primary:hover { background: #4ff0e0; }
+  .btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* headline stat strip */
+  .stat-strip {
+    margin-top: 44px; display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border-soft);
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  }
+  .stat-cell { background: var(--panel); padding: 20px 18px; }
+  .stat-cell .v { font-family: var(--mono); font-size: 30px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+  .stat-cell .k { color: var(--faint); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 9px; }
+  @media (max-width: 680px) { .stat-strip { grid-template-columns: 1fr 1fr; } }
+
+  /* sections */
+  section { padding: 64px 0; border-top: 1px solid var(--border-soft); }
+  .sec-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 2.4px; text-transform: uppercase; color: var(--faint); }
+  h2 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -0.8px; line-height: 1.1; margin: 12px 0 0; font-weight: 720; }
+  .sec-lede { color: var(--muted); max-width: 62ch; margin: 16px 0 0; font-size: 17px; }
+  p { color: #c3cad8; }
+  .accent-tick { color: var(--accent); }
+
+  /* verdict callout */
+  .verdict {
+    margin-top: 26px; border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: linear-gradient(180deg, rgba(56, 224, 208, 0.05), transparent);
+    border-radius: 12px; padding: 22px 24px;
+  }
+  .verdict p { margin: 0; color: var(--text); font-size: 17px; }
+  .verdict strong { color: var(--accent); }
+
+  /* pipeline */
+  .pipeline { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+  .stage {
+    flex: 1 1 130px; min-width: 130px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 13px 14px; position: relative;
+  }
+  .stage .n { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 1px; }
+  .stage .t { font-weight: 650; font-size: 14px; margin-top: 5px; }
+  .stage .d { color: var(--faint); font-size: 12px; margin-top: 4px; line-height: 1.4; }
+  .stage.paid { border-color: rgba(251, 111, 132, 0.3); }
+  .stage.paid .n { color: var(--neg); }
+  .stage.free .n { color: var(--pos); }
+
+  /* funnel */
+  .funnel { margin-top: 30px; display: grid; gap: 10px; }
+  .frow { display: grid; grid-template-columns: 150px 1fr 110px; align-items: center; gap: 14px; }
+  .frow .lab { font-family: var(--mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .frow .barwrap { background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 6px; height: 30px; overflow: hidden; }
+  .frow .bar { height: 100%; background: linear-gradient(90deg, rgba(56,224,208,0.5), rgba(56,224,208,0.18)); border-right: 1px solid var(--accent); }
+  .frow .val { font-family: var(--mono); font-size: 15px; text-align: right; font-weight: 650; }
+  .frow .val small { color: var(--faint); font-size: 11px; }
+  @media (max-width: 680px) { .frow { grid-template-columns: 96px 1fr 78px; gap: 8px; } }
+
+  /* cohort compare */
+  .cohorts { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cohort { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+  .cohort h3 { margin: 0; font-size: 16px; letter-spacing: -0.2px; }
+  .cohort .sub { color: var(--faint); font-size: 12.5px; margin-top: 4px; font-family: var(--mono); }
+  .cohort .rows { margin-top: 16px; }
+  .cohort .r { display: flex; justify-content: space-between; padding: 9px 0; border-top: 1px solid var(--border-soft); font-size: 14px; }
+  .cohort .r:first-child { border-top: none; }
+  .cohort .r .lab { color: var(--muted); }
+  .cohort .r .v { font-family: var(--mono); font-weight: 650; }
+  @media (max-width: 680px) { .cohorts { grid-template-columns: 1fr; } }
+
+  /* chart */
+  .chart-card { margin-top: 28px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px 22px 18px; }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+  .chart-head .title { font-weight: 650; font-size: 15px; }
+  .chart-legend { display: flex; gap: 16px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .lg { display: inline-flex; align-items: center; gap: 6px; }
+  .lg i { width: 16px; height: 0; border-top: 2px dashed var(--accent); display: inline-block; }
+  .lg b { width: 11px; height: 11px; border-radius: 2px; background: var(--neg); display: inline-block; }
+  svg { display: block; width: 100%; height: auto; }
+  .chart-note { margin-top: 12px; color: var(--muted); font-size: 13.5px; }
+  .chart-note b { color: var(--neg); font-family: var(--mono); }
+
+  /* backtest list */
+  .bt { margin-top: 28px; display: grid; gap: 12px; }
+  .btcard { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .btcard .name { font-weight: 650; font-size: 15px; }
+  .btcard .why { color: var(--muted); font-size: 13.5px; margin-top: 4px; max-width: 64ch; }
+  .verdict-pill { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; background: var(--neg-dim); color: var(--neg); border: 1px solid rgba(251,111,132,0.3); white-space: nowrap; }
+  @media (max-width: 680px) { .btcard { grid-template-columns: 1fr; } }
+
+  /* security callout */
+  .sec-warn { margin-top: 26px; border: 1px solid rgba(251,111,132,0.28); background: linear-gradient(180deg, var(--neg-dim), transparent); border-radius: 14px; padding: 22px 24px; }
+  .sec-warn .k { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--neg); }
+  .sec-warn h3 { margin: 8px 0 0; font-size: 19px; letter-spacing: -0.3px; }
+  .sec-warn .rule { margin-top: 14px; color: var(--text); font-size: 15px; border-top: 1px solid rgba(251,111,132,0.2); padding-top: 14px; }
+  .sec-warn .rule b { color: var(--neg); }
+
+  /* lessons */
+  .lessons { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .lesson { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .lesson .num { font-family: var(--mono); color: var(--accent); font-size: 13px; }
+  .lesson .t { font-weight: 650; margin-top: 8px; font-size: 15.5px; }
+  .lesson .d { color: var(--muted); font-size: 14px; margin-top: 6px; }
+  @media (max-width: 680px) { .lessons { grid-template-columns: 1fr; } }
+
+  /* footer */
+  footer { border-top: 1px solid var(--border); padding: 50px 0 70px; margin-top: 20px; }
+  .foot-cta { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .foot-meta { color: var(--faint); font-size: 13px; margin-top: 26px; line-height: 1.7; }
+  .foot-meta a { color: var(--muted); }
+  .caveat { margin-top: 20px; color: var(--faint); font-size: 13px; max-width: 70ch; }
+
+  /* reveal motion */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <span class="brand">&#9670; <b>sentinel</b></span>
+    <div class="nav-links">
+      <a class="nav-hide" href="#build">The build</a>
+      <a class="nav-hide" href="#wall">The wall</a>
+      <a class="nav-hide" href="#lessons">Lessons</a>
+      <a class="nav-cta" href="#" id="reddit-top">Read on Reddit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Post-mortem</div>
+    <h1>We built a pump.fun trading bot. The data told us to kill it.</h1>
+    <p class="lede">A complete automated trading system, run on live memecoin data in paper mode, then shut down on purpose. Here is exactly what the numbers said.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#wall">See the wall</a>
+      <a class="btn btn-ghost" href="#build">How it worked</a>
+    </div>
+
+    <div class="stat-strip reveal">
+      <div class="stat-cell"><div class="v mono">93</div><div class="k">trades</div></div>
+      <div class="stat-cell"><div class="v mono">31%</div><div class="k">win rate</div></div>
+      <div class="stat-cell"><div class="v mono neg">-0.31&#9678;</div><div class="k">net P&amp;L (paper)</div></div>
+      <div class="stat-cell"><div class="v mono pos">$0</div><div class="k">real money lost</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="verdict">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">The verdict</div>
+    <h2>No edge. And it cannot be tuned into one.</h2>
+    <p class="sec-lede">We ran two strategy configurations and 93 real trades. Both lost money. Then we backtested the three most-cited "winning" fixes against the data. All three failed. The reason is structural, not a parameter.</p>
+    <div class="verdict">
+      <p>A stop-loss <strong>cannot work</strong> on these coins. When they dump, the price gaps roughly 80% in a single tick, so a stop set at -18% fills at a median of <strong>-84%</strong>. There is no liquidity at the stop price. This is a property of the asset, not a setting.</p>
+    </div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">What we built</div>
+    <h2>A decoupled pipeline, not a script</h2>
+    <p class="sec-lede">An event-bus architecture in TypeScript, around 330 tests, with a hard and un-bypassable risk gate. Live trading stayed off the whole time and needed a manual code edit plus a runtime flag to enable. By design, no automated path could turn it on.</p>
+    <div class="pipeline">
+      <div class="stage"><div class="n">01 INGEST</div><div class="t">Live stream</div><div class="d">PumpPortal websocket, ~28 launches/min</div></div>
+      <div class="stage free"><div class="n">02 FILTER &middot; FREE</div><div class="t">Cheap pass</div><div class="d">Local ring-buffer signals reject &gt;99%</div></div>
+      <div class="stage paid"><div class="n">03 ENRICH &middot; PAID</div><div class="t">Helius</div><div class="d">Holders, concentration, dev behavior</div></div>
+      <div class="stage"><div class="n">04 DECIDE</div><div class="t">Claude</div><div class="d">BUY or SKIP, structured, rate-capped</div></div>
+      <div class="stage"><div class="n">05 RISK</div><div class="t">Hard gate</div><div class="d">Can only shrink size, never grow</div></div>
+      <div class="stage"><div class="n">06 EXIT</div><div class="t">Mechanical</div><div class="d">No model can hold or override a sell</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="funnel">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">The one clear win</div>
+    <h2>The free pre-filter earned its keep</h2>
+    <p class="sec-lede">pump.fun launches around 28 tokens a minute. Enriching every one is how you light money on fire. A free local pre-filter rejected over 99% of candidates before a single paid call.</p>
+    <div class="funnel" id="funnel-bars"></div>
+    <p class="chart-note">First-configuration snapshot. A second configuration added 55 more trades, for 93 total. The pre-filter pass rate held near <span class="mono accent-tick">0.6%</span> throughout.</p>
+  </div>
+</section>
+
+<section id="cohorts">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">Two configurations</div>
+    <h2>We even tried fixing it. It got worse.</h2>
+    <p class="sec-lede">Cohort B entered earlier and exited faster, the deliberate experiment after Cohort A showed where the money leaked. Earlier entry raised the win rate, and lost more money.</p>
+    <div class="cohorts">
+      <div class="cohort">
+        <h3>Cohort A &middot; "Survivor"</h3>
+        <div class="sub">20-min entry &middot; -35% stop</div>
+        <div class="rows">
+          <div class="r"><span class="lab">Trades</span><span class="v">38</span></div>
+          <div class="r"><span class="lab">Win rate</span><span class="v">26.3%</span></div>
+          <div class="r"><span class="lab">Net P&amp;L</span><span class="v neg">-0.101&#9678;</span></div>
+          <div class="r"><span class="lab">Expectancy</span><span class="v neg">-0.0027&#9678;</span></div>
+          <div class="r"><span class="lab">Avg hold</span><span class="v">7.1 min</span></div>
+        </div>
+      </div>
+      <div class="cohort">
+        <h3>Cohort B &middot; "Scalp"</h3>
+        <div class="sub">4-min entry &middot; -18% stop</div>
+        <div class="rows">
+          <div class="r"><span class="lab">Trades</span><span class="v">55</span></div>
+          <div class="r"><span class="lab">Win rate</span><span class="v pos">34.5%</span></div>
+          <div class="r"><span class="lab">Net P&amp;L</span><span class="v neg">-0.209&#9678;</span></div>
+          <div class="r"><span class="lab">Expectancy</span><span class="v neg">-0.0038&#9678;</span></div>
+          <div class="r"><span class="lab">Avg hold</span><span class="v">2.4 min</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="wall">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">The structural wall</div>
+    <h2>Where the stop-loss goes to die</h2>
+    <p class="sec-lede">We logged the exact on-chain price path for every scalp trade. Here is every hard-stop exit. The dashed line is where the stop was set. The bars are where it actually filled.</p>
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="title mono">Hard-stop fills vs. the -18% trigger</div>
+        <div class="chart-legend">
+          <span class="lg"><i></i> stop trigger (-18%)</span>
+          <span class="lg"><b></b> actual fill</span>
+        </div>
+      </div>
+      <svg id="wall-chart" viewBox="0 0 960 360" role="img" aria-label="Bar chart of 17 hard-stop trades. Most fill between -74% and -91%, far below the -18% stop trigger."></svg>
+      <p class="chart-note">17 hard stops. Median fill <b>-84%</b> against an <span class="mono">-18%</span> trigger. These coins do not slide through a stop. They gap from above the trigger straight to -80% or worse in one tick, because there is no order book at -18% to sell into.</p>
+    </div>
+  </div>
+</section>
+
+<section id="backtests">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">Three fixes, three failures</div>
+    <h2>Every "winning strategy" missed the point</h2>
+    <p class="sec-lede">We backtested the usual advice against the real trade data. Each one targeted the wrong layer.</p>
+    <div class="bt">
+      <div class="btcard">
+        <div>
+          <div class="name">Re-tighten the entry filter</div>
+          <div class="why">Winners and losers were statistically indistinguishable on every captured feature. Dev-sold was zero on 35 of 38 trades. Volume-accelerating was true on 100%. No threshold helped.</div>
+        </div>
+        <span class="verdict-pill">Failed</span>
+      </div>
+      <div class="btcard">
+        <div>
+          <div class="name">Tighter stop-loss</div>
+          <div class="why">The best case cut the loss about 37% but never went positive, and the result hinged on a single trade. See the chart above for why a tighter stop fills no better.</div>
+        </div>
+        <span class="verdict-pill">Failed</span>
+      </div>
+      <div class="btcard">
+        <div>
+          <div class="name">Take-profit ladder and moonbag</div>
+          <div class="why">Marginally worse. There was no fat tail to capture. Of 55 scalp trades, only 2 reached 3x and none reached 5x. ~84% faded to flat almost immediately.</div>
+        </div>
+        <span class="verdict-pill">Failed</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">A lesson that cost $12</div>
+    <h2>The wallet was never ours</h2>
+    <p class="sec-lede">We generated the trading wallet with a trading service's "generate wallet" button. That means the service generated and held the private key. It was drained from the first hour: a small amount siphoned to one address every 72 minutes, automated, for 9 days, starting essentially at funding.</p>
+    <div class="sec-warn">
+      <div class="k">The rule</div>
+      <h3>A wallet you did not generate is not yours</h3>
+      <p class="rule">Native SOL can only move with the private key. A "click to generate" wallet from any service means <b>they hold your keys.</b> Generate the keypair yourself, offline, on a clean device, and use non-custodial signing. Cost of this lesson: $12. Cost if we had funded it for live trading: a lot more.</p>
+    </div>
+  </div>
+</section>
+
+<section id="lessons">
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">What I would tell the next person</div>
+    <h2>Five things, learned the cheap way</h2>
+    <div class="lessons">
+      <div class="lesson"><div class="num">01</div><div class="t">Build the free pre-filter first</div><div class="d">It is the only part of this that is unambiguously correct, and it decides whether your cost structure survives.</div></div>
+      <div class="lesson"><div class="num">02</div><div class="t">Test fills, not triggers</div><div class="d">On an illiquid asset a stop-loss is a label, not a guarantee. Log the real price path early.</div></div>
+      <div class="lesson"><div class="num">03</div><div class="t">The edge is not in the exit</div><div class="d">We spent most of our effort there and proved it cannot be tuned. If an edge exists, it is upstream.</div></div>
+      <div class="lesson"><div class="num">04</div><div class="t">Let the data say no</div><div class="d">The hardest discipline was pre-committing to a kill rule and honoring the negative result instead of moving the goalposts.</div></div>
+      <div class="lesson"><div class="num">05</div><div class="t">Self-custody, always</div><div class="d">Never trade from a wallet a third party generated for you. Hold your own keys.</div></div>
+      <div class="lesson"><div class="num">06</div><div class="t">A negative result is a result</div><div class="d">The bot did its job. It told the truth before any real money was at risk. That is a win.</div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap reveal">
+    <div class="sec-eyebrow">Read more / discuss</div>
+    <h2 style="margin-bottom:22px;">Built and dismantled honestly.</h2>
+    <div class="foot-cta">
+      <a class="btn btn-primary" href="#" id="reddit-bottom">Discuss on Reddit</a>
+      <a class="btn btn-ghost" href="data/positions.csv" download>Download the trade data (CSV)</a>
+    </div>
+    <p class="caveat">Caveats, stated plainly: 93 trades over about 9 days, two configurations, one market regime. The structural finding (gap-through fills) is robust. The exact P&amp;L figures are directional, not statistically definitive. Modeled fills used real tick prices but did not model our own market impact, so live results would likely be worse, not better. This is an engineering post-mortem, not financial advice.</p>
+    <p class="foot-meta">
+      Sentinel was a paper-trading research bot for pump.fun memecoins. No real capital was ever traded. Data exported from the live run: <a href="data/positions.csv" download>positions</a>, <a href="data/decisions.csv" download>decisions</a>, <a href="data/excursion.csv" download>price paths</a>.<br/>
+      Written by Mustapha Liaichi &middot; report.mustaphaliaichi.com
+    </p>
+  </div>
+</footer>
+
+<script>
+  // ---- Embedded data (real, from the live run export) ----
+  // Reddit post URL placeholder. Replace before publishing.
+  var REDDIT_URL = "https://www.reddit.com/REPLACE_WITH_YOUR_POST_LINK";
+  document.getElementById("reddit-top").href = REDDIT_URL;
+  document.getElementById("reddit-bottom").href = REDDIT_URL;
+
+  // Funnel (first-configuration snapshot)
+  var FUNNEL = [
+    { lab: "Seen",          v: 138922, note: "" },
+    { lab: "Passed free",   v: 808,    note: "0.6%" },
+    { lab: "Enriched paid", v: 740,    note: "" },
+    { lab: "Bought",        v: 38,     note: "" }
+  ];
+
+  // Every hard-stop trade: actual fill % from entry (negative). Trigger was -18%.
+  var HARD_STOPS = [
+    { s: "T0K", fill: -24.32 }, { s: "BUGD", fill: -85.77 }, { s: "CLUCK", fill: -84.01 },
+    { s: "MOOCTO", fill: -85.53 }, { s: "BETTERFUN", fill: -83.03 }, { s: "BLOP", fill: -85.37 },
+    { s: "blackbox", fill: -21.83 }, { s: "RKC", fill: -88.21 }, { s: "PIGEON", fill: -86.84 },
+    { s: "Franklin", fill: -85.52 }, { s: "WFLAG", fill: -74.50 }, { s: "DROOL", fill: -22.43 },
+    { s: "VERSE", fill: -22.13 }, { s: "Pumpfun", fill: -36.71 }, { s: "Kinovi", fill: -87.17 },
+    { s: "LOOM", fill: -24.17 }, { s: "KUMORI", fill: -91.32 }
+  ];
+  var TRIGGER = -18;
+
+  // ---- Render funnel ----
+  (function () {
+    var max = FUNNEL[0].v;
+    var html = FUNNEL.map(function (f) {
+      var pct = Math.max(2, (f.v / max) * 100);
+      var note = f.note ? ' <small>' + f.note + '</small>' : '';
+      return '<div class="frow">' +
+        '<div class="lab">' + f.lab + '</div>' +
+        '<div class="barwrap"><div class="bar" style="width:' + pct.toFixed(2) + '%"></div></div>' +
+        '<div class="val">' + f.v.toLocaleString() + note + '</div>' +
+        '</div>';
+    }).join("");
+    document.getElementById("funnel-bars").innerHTML = html;
+  })();
+
+  // ---- Render the wall chart (real SVG from data) ----
+  (function () {
+    var W = 960, H = 360, padL = 48, padR = 16, padT = 24, padB = 56;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var data = HARD_STOPS.slice().sort(function (a, b) { return b.fill - a.fill; }); // least negative first
+    var n = data.length;
+    var yMin = -100, yMax = 0;
+    var y = function (v) { return padT + (yMax - v) / (yMax - yMin) * plotH; };
+    var bw = plotW / n;
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.getElementById("wall-chart");
+
+    function el(tag, attrs) {
+      var e = document.createElementNS(ns, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    // gridlines + y labels
+    [0, -18, -40, -60, -80, -100].forEach(function (g) {
+      var yy = y(g);
+      svg.appendChild(el("line", { x1: padL, y1: yy, x2: W - padR, y2: yy, stroke: "#141a25", "stroke-width": 1 }));
+      var t = el("text", { x: padL - 8, y: yy + 4, "text-anchor": "end", fill: "#565e72", "font-size": 11, "font-family": "ui-monospace, monospace" });
+      t.textContent = g + "%";
+      svg.appendChild(t);
+    });
+
+    // bars (animate height on reveal)
+    data.forEach(function (d, i) {
+      var x = padL + i * bw + bw * 0.16;
+      var w = bw * 0.68;
+      var top = y(d.fill), base = y(0);
+      var nearMiss = d.fill > -40; // the few that did not fully rug
+      var rect = el("rect", {
+        x: x.toFixed(1), y: base.toFixed(1), width: w.toFixed(1), height: 0,
+        rx: 2, fill: nearMiss ? "rgba(251,111,132,0.4)" : "#fb6f84"
+      });
+      rect.style.transition = "height 0.7s cubic-bezier(0.16,1,0.3,1), y 0.7s cubic-bezier(0.16,1,0.3,1)";
+      rect.dataset.y = top.toFixed(1);
+      rect.dataset.h = (base - top).toFixed(1);
+      svg.appendChild(rect);
+      // symbol label
+      var lab = el("text", { x: (x + w / 2).toFixed(1), y: H - padB + 16, "text-anchor": "end", fill: "#565e72", "font-size": 9.5, "font-family": "ui-monospace, monospace", transform: "rotate(-50 " + (x + w / 2).toFixed(1) + " " + (H - padB + 16) + ")" });
+      lab.textContent = d.s;
+      svg.appendChild(lab);
+    });
+
+    // trigger line (on top)
+    var ty = y(TRIGGER);
+    svg.appendChild(el("line", { x1: padL, y1: ty, x2: W - padR, y2: ty, stroke: "#38e0d0", "stroke-width": 2, "stroke-dasharray": "7 5" }));
+    var tl = el("text", { x: W - padR, y: ty - 8, "text-anchor": "end", fill: "#38e0d0", "font-size": 12, "font-weight": 700, "font-family": "ui-monospace, monospace" });
+    tl.textContent = "stop set here: -18%";
+    svg.appendChild(tl);
+
+    // animate bars when chart scrolls into view
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function grow() {
+      svg.querySelectorAll("rect").forEach(function (r, i) {
+        if (reduce) { r.setAttribute("y", r.dataset.y); r.setAttribute("height", r.dataset.h); return; }
+        setTimeout(function () {
+          r.setAttribute("y", r.dataset.y);
+          r.setAttribute("height", r.dataset.h);
+        }, 60 + i * 35);
+      });
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { grow(); io.disconnect(); } });
+    }, { threshold: 0.3 });
+    io.observe(svg);
+  })();
+
+  // ---- Scroll reveal ----
+  (function () {
+    var els = document.querySelectorAll(".reveal");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      els.forEach(function (e) { e.classList.add("in"); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    els.forEach(function (e) { io.observe(e); });
+  })();
+</script>
+
+</body>
+</html>

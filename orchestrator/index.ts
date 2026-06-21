@@ -20,6 +20,8 @@ import {
   getDailyStats,
   getDecisions,
   getKillState,
+  getPositionExcursions,
+  upsertPositionExcursion,
   utcDay,
 } from '../db/queries.js';
 import { closePool } from '../db/client.js';
@@ -38,7 +40,8 @@ import { enrich } from '../enrichment/index.js';
 import { decide } from '../decision/index.js';
 import { activateKill, approve, isKillActive, releaseKill } from '../risk/index.js';
 import { createExecutor } from '../execution/index.js';
-import { PositionEngine } from '../positions/index.js';
+import { PositionEngine, selectExitConfig } from '../positions/index.js';
+import type { ExitConfig } from '../positions/index.js';
 import { DailyTracker } from './daily.js';
 import { Nursery } from './nursery.js';
 import { evaluateCandidate, type PipelineDeps } from './pipeline.js';
@@ -53,6 +56,33 @@ const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
 let stopFns: Array<() => void> = [];
 let shuttingDown = false;
+
+/**
+ * Build the exit config from env: a named profile (EXIT_PROFILE = 'default' |
+ * 'scalp') plus optional per-field overrides (EXIT_TP_TRIGGER, EXIT_TP_SELL,
+ * EXIT_TRAIL, EXIT_HARD_STOP, EXIT_TIME_STOP_SEC). All unset → the SPEC default
+ * profile, so the live strategy is unchanged unless a run opts in.
+ */
+function resolveExitConfig(): ExitConfig {
+  const num = (name: Parameters<typeof optionalEnv>[0]): number | undefined => {
+    const raw = optionalEnv(name);
+    if (raw === undefined) return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const overrides: Partial<ExitConfig> = {};
+  const tpTrigger = num('EXIT_TP_TRIGGER');
+  if (tpTrigger !== undefined) overrides.takeProfitTriggerPct = tpTrigger;
+  const tpSell = num('EXIT_TP_SELL');
+  if (tpSell !== undefined) overrides.takeProfitSellFraction = tpSell;
+  const trail = num('EXIT_TRAIL');
+  if (trail !== undefined) overrides.trailingGivebackPct = trail;
+  const hardStop = num('EXIT_HARD_STOP');
+  if (hardStop !== undefined) overrides.hardStopPct = hardStop;
+  const timeStopSec = num('EXIT_TIME_STOP_SEC');
+  if (timeStopSec !== undefined) overrides.timeStopMs = timeStopSec * 1000;
+  return selectExitConfig(optionalEnv('EXIT_PROFILE'), overrides);
+}
 
 /** Boot the whole paper-trading pipeline. */
 export async function boot(): Promise<void> {
@@ -95,7 +125,16 @@ export async function boot(): Promise<void> {
     priceOf: (mint) => tradeBuffer.latestPrice(mint),
     bus,
   });
-  const engine = new PositionEngine({ executor: executor.sell, bus });
+  const exitConfig = resolveExitConfig();
+  const engine = new PositionEngine({
+    executor: executor.sell,
+    bus,
+    config: exitConfig,
+    onExcursion: (e) =>
+      void upsertPositionExcursion(e).catch((err) =>
+        log.error('excursion persist failed', { id: e.id, error: String(err) }),
+      ),
+  });
 
   // 5. Pipeline deps — the one place every module meets.
   const provider = createHeliusProvider();
@@ -196,6 +235,7 @@ export async function boot(): Promise<void> {
     closedPositions: (limit) => getClosedPositions(limit),
     decisions: (limit) => getDecisions(limit),
     dailyStats: () => getDailyStats(utcDay(Date.now())),
+    excursions: (limit) => getPositionExcursions(limit),
     killState: () => getKillState(),
     activateKill,
     releaseKill,
@@ -210,6 +250,8 @@ export async function boot(): Promise<void> {
     apiPort,
     mode: 'paper',
     ripenAgeSec: defaultThresholds.minAgeSeconds,
+    exitProfile: optionalEnv('EXIT_PROFILE') ?? 'default',
+    exitConfig,
     killActive,
     dailyPnlSol: daily.currentPnl(),
   });
