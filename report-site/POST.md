@@ -2,7 +2,7 @@
 
 This is the write-up to publish. Suggested home: a self-post on **r/algotrading**,
 **r/solana**, or **r/SolanaMemeCoins**, plus a cross-post linking to the full
-report at **report.mustaphaliaichi.com**.
+report at **report.cogdb.xyz**.
 
 The live report page has a Reddit-link placeholder in `index.html`:
 `REDDIT_URL = "https://www.reddit.com/REPLACE_WITH_YOUR_POST_LINK"`. After you
@@ -27,7 +27,7 @@ No real money was ever traded. I am posting the full result because the negative
 finding is more useful than another "I made 10x" thread, and because the reason
 it fails is structural, not a tuning problem.
 
-**Full report with charts and the raw data:** [report.mustaphaliaichi.com](https://report.mustaphaliaichi.com)
+**Full report with charts and the raw data:** [report.cogdb.xyz](https://report.cogdb.xyz)
 
 ### The setup
 A decoupled pipeline: live ingestion (PumpPortal) → a free local pre-filter → paid
