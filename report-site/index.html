@@ -223,6 +223,7 @@
       <a class="nav-hide" href="#build">The build</a>
       <a class="nav-hide" href="#wall">The wall</a>
       <a class="nav-hide" href="#lessons">Lessons</a>
+      <a class="nav-hide" href="https://github.com/MuLIAICHI/sentinel">Source</a>
       <a class="nav-cta" href="#" id="reddit-top">Read on Reddit</a>
     </div>
   </div>
@@ -400,8 +401,13 @@
     <h2 style="margin-bottom:22px;">Built and dismantled honestly.</h2>
     <div class="foot-cta">
       <a class="btn btn-primary" href="#" id="reddit-bottom">Discuss on Reddit</a>
+      <a class="btn btn-ghost" href="https://github.com/MuLIAICHI/sentinel">View source on GitHub</a>
       <a class="btn btn-ghost" href="data/positions.csv" download>Download the trade data (CSV)</a>
     </div>
+    <p class="foot-meta" style="margin-top:18px;">
+      Open source (MIT): <a href="https://github.com/MuLIAICHI/sentinel">github.com/MuLIAICHI/sentinel</a><br/>
+      Stack: TypeScript, Node, event-bus + DI, Express, websockets, PostgreSQL, Claude, Solana web3.js, Next.js, ~330 tests.
+    </p>
     <p class="caveat">Caveats, stated plainly: 93 trades over about 9 days, two configurations, one market regime. The structural finding (gap-through fills) is robust. The exact P&amp;L figures are directional, not statistically definitive. Modeled fills used real tick prices but did not model our own market impact, so live results would likely be worse, not better. This is an engineering post-mortem, not financial advice.</p>
     <p class="foot-meta">
       Sentinel was a paper-trading research bot for pump.fun memecoins. No real capital was ever traded. Data exported from the live run: <a href="data/positions.csv" download>positions</a>, <a href="data/decisions.csv" download>decisions</a>, <a href="data/excursion.csv" download>price paths</a>.<br/>
